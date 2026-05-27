@@ -5,7 +5,7 @@
 -/
 module
 
-import Strata.DDM.Integration.Lean
+import StrataDDM.Integration.Lean
 
 -- Minimal dialect to test dialects can be declared.
 #guard_msgs in

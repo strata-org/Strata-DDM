@@ -5,11 +5,11 @@
 -/
 module
 
-public import Strata.DDM.AST
+public import StrataDDM.AST
 
-import Strata.DDM.Util.Ion.Lean
-import Strata.Util.DecideProp
-public import Strata.DDM.Util.Ion.SymbolTable
+import StrataDDM.Util.Ion.Lean
+import all StrataDDM.Util.DecideProp
+public import StrataDDM.Util.Ion.SymbolTable
 
 open Lean
 open Lean.Elab

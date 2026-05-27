@@ -5,9 +5,9 @@
 -/
 module
 
-public import Strata.DDM.Integration.Lean.Gen
-public import Strata.DDM.Integration.Lean.HashCommands
-public import Strata.DDM.Integration.Lean.GenTrace
+public import StrataDDM.Integration.Lean.Gen
+public import StrataDDM.Integration.Lean.HashCommands
+public import StrataDDM.Integration.Lean.GenTrace
 
 /-!
 Umbrella module that re-exports all imports needed to work with

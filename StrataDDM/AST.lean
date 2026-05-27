@@ -7,13 +7,13 @@ module
 
 import Std.Data.HashMap.Lemmas
 
-public import Strata.DDM.AST.Datatype
-import all Strata.DDM.Util.Array
-public import Strata.DDM.Util.ByteArray
-import all Strata.DDM.Util.ByteArray
-public import Strata.DDM.Util.Decimal
-public import Strata.DDM.Util.SourceRange
-import Strata.Util.DecideProp
+public import StrataDDM.AST.Datatype
+import all StrataDDM.Util.Array
+public import StrataDDM.Util.ByteArray
+import all StrataDDM.Util.ByteArray
+public import StrataDDM.Util.Decimal
+public import StrataDDM.Util.SourceRange
+import all StrataDDM.Util.DecideProp
 
 set_option autoImplicit false
 

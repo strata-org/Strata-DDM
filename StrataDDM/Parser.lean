@@ -5,9 +5,9 @@
 -/
 module
 
-public import Strata.DDM.Elab.Env
-public import Strata.DDM.Format
-import Strata.Util.DecideProp
+public import StrataDDM.Elab.Env
+public import StrataDDM.Format
+import all StrataDDM.Util.DecideProp
 
 open Lean
 open Parser (

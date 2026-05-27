@@ -7,8 +7,8 @@ module
 
 public import Lean.ToExpr
 
-import all Strata.DDM.Util.Lean
-import all Strata.DDM.Util.String
+import all StrataDDM.Util.Lean
+import all StrataDDM.Util.String
 
 public section
 namespace Strata

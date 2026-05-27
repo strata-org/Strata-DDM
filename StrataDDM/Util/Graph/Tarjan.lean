@@ -4,8 +4,8 @@
   SPDX-License-Identifier: Apache-2.0 OR MIT
 -/
 module
-import all Strata.DDM.Util.Fin
-import all Strata.DDM.Util.Vector
+import all StrataDDM.Util.Fin
+import all StrataDDM.Util.Vector
 
 public section
 namespace Strata

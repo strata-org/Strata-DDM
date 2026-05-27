@@ -5,4 +5,4 @@
 -/
 module
 
-public import Strata.DDM.Integration.Java.Gen
+public import StrataDDM.Integration.Java.Gen

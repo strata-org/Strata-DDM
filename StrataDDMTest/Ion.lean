@@ -5,10 +5,10 @@
 -/
 module
 
-import Strata.DDM.AST.Lemmas
-import all Strata.DDM.Ion
-import Strata.DDM.BuiltinDialects.StrataDDL
-import Strata.DDM.Integration.Lean
+import StrataDDM.AST.Lemmas
+import all StrataDDM.Ion
+import StrataDDM.BuiltinDialects.StrataDDL
+import StrataDDM.Integration.Lean
 
 namespace Strata
 
@@ -32,7 +32,7 @@ private def testProgramRoundTrip (p : Program) : Bool :=
   | .ok res  => res == p
 
 -- Load the actual Bool dialect from Examples
-#load_dialect "../../Examples/dialects/Bool.dialect.st"
+#load_dialect "StrataDDMTest/dialects/Bool.dialect.st"
 
 #guard testDialectRoundTrip Bool
 

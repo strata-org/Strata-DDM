@@ -5,7 +5,7 @@
 -/
 module
 
-public import Strata.DDM.Integration.Lean
+public import StrataDDM.Integration.Lean
 
 public section
 

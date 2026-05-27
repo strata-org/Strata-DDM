@@ -5,7 +5,7 @@
 -/
 module
 
-import Strata.DDM.Integration.Lean
+import StrataDDM.Integration.Lean
 
 /-!
 # Tests for Scoped Function Declarations in DDM

@@ -4,7 +4,7 @@
   SPDX-License-Identifier: Apache-2.0 OR MIT
 -/
 module
-public import Strata.DDM.Util.Decimal
+public import StrataDDM.Util.Decimal
 
 public section
 namespace Strata.Decimal

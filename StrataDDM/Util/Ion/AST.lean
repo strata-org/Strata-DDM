@@ -5,8 +5,8 @@
 -/
 module
 
-public import Strata.DDM.Util.ByteArray
-public import Strata.DDM.Util.Decimal
+public import StrataDDM.Util.ByteArray
+public import StrataDDM.Util.Decimal
 
 public section
 

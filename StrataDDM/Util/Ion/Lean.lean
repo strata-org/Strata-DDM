@@ -10,14 +10,14 @@ extension to create high performance Ion serialization and deserialization.
 -/
 module
 
-public import Strata.DDM.Util.Ion
+public import StrataDDM.Util.Ion
 
-public meta import Strata.DDM.Util.Ion.Env
-public meta import Strata.DDM.Util.Ion.SymbolTable
+public meta import StrataDDM.Util.Ion.Env
+public meta import StrataDDM.Util.Ion.SymbolTable
 public meta import Lean.Meta.Eval
 public meta import Lean.Elab.Command
 import Lean.Util.Trace
-import Strata.DDM.Util.Ion.Env
+import StrataDDM.Util.Ion.Env
 
 open Lean
 open Lean.Elab

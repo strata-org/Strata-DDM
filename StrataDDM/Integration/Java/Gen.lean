@@ -5,9 +5,9 @@
 -/
 module
 
-public import Strata.DDM.AST
-import Strata.DDM.Ion
-import Strata.DDM.Integration.Categories
+public import StrataDDM.AST
+import StrataDDM.Ion
+import StrataDDM.Integration.Categories
 
 namespace Strata.Java
 

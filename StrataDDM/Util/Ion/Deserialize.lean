@@ -5,11 +5,10 @@
 -/
 module
 
-public import Strata.DDM.Util.Ion.AST
+public import StrataDDM.Util.Ion.AST
 
-import Strata.Util.DecideProp
+import all StrataDDM.Util.DecideProp
 
-open Strata (decideProp)
 namespace Ion
 
 structure TypeDesc where

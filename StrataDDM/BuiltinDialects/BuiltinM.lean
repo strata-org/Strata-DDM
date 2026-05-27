@@ -5,7 +5,7 @@
 -/
 module
 
-public import Strata.DDM.Elab.DeclM
+public import StrataDDM.Elab.DeclM
 
 
 public section

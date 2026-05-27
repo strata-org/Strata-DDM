@@ -5,7 +5,7 @@
 -/
 module
 
-meta import Strata.DDM.Util.Graph.Tarjan
+meta import StrataDDM.Util.Graph.Tarjan
 
 namespace Strata.OutGraph.Tests
 

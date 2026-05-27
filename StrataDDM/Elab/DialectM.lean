@@ -7,10 +7,11 @@ module
 
 import Std.Data.HashMap.Lemmas
 
-public import Strata.DDM.Elab.Core
+public import StrataDDM.Elab.Core
 
-import all Strata.DDM.Util.Array
-import all Strata.DDM.Util.Fin
+import all StrataDDM.Util.Array
+import all StrataDDM.Util.DecideProp
+import all StrataDDM.Util.Fin
 
 set_option autoImplicit false
 

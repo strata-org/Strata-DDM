@@ -4,8 +4,8 @@
   SPDX-License-Identifier: Apache-2.0 OR MIT
 -/
 module
-public import Strata.DDM.Parser
-public import Strata.DDM.Elab.SyntaxElab
+public import StrataDDM.Parser
+public import StrataDDM.Elab.SyntaxElab
 
 open Strata.Parser (DeclParser ParsingContext)
 

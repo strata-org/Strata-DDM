@@ -5,7 +5,7 @@
 -/
 module
 
-import Strata.DDM.Integration.Lean
+import StrataDDM.Integration.Lean
 
 /-
 This test for regressions involving TypeP and empty types.
@@ -27,7 +27,7 @@ op mkBinding (name : Ident, tp : TypeP) : Binding => @[prec(40)] name ":" tp;
 info: private inductive TypeP : Type → Type
 number of parameters: 1
 constructors:
-_private.StrataTest.DDM.TypeP.0.TypeP.expr : {α : Type} → TestTypePType α → TypeP α
-_private.StrataTest.DDM.TypeP.0.TypeP.type : {α : Type} → α → TypeP α
+_private.StrataDDMTest.TypeP.0.TypeP.expr : {α : Type} → TestTypePType α → TypeP α
+_private.StrataDDMTest.TypeP.0.TypeP.type : {α : Type} → α → TypeP α
 -/
 #guard_msgs in #print TypeP

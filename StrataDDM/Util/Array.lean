@@ -4,7 +4,7 @@
   SPDX-License-Identifier: Apache-2.0 OR MIT
 -/
 module
-import all Strata.DDM.Util.List
+import all StrataDDM.Util.List
 
 set_option autoImplicit false
 

@@ -5,9 +5,9 @@
 -/
 module
 
-public import Strata.DDM.AST
-import Strata.DDM.BuiltinDialects.BuiltinM
-import Strata.DDM.BuiltinDialects.Init
+public import StrataDDM.AST
+import StrataDDM.BuiltinDialects.BuiltinM
+import StrataDDM.BuiltinDialects.Init
 
 open Strata.Elab
 

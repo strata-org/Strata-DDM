@@ -5,14 +5,14 @@
 -/
 module
 
-public import Strata.DDM.Elab.DeclM
-public import Strata.DDM.Elab.Tree
-import Strata.DDM.HNF
-import all Strata.DDM.Util.Array
-import all Strata.DDM.Util.Fin
-import all Strata.DDM.Util.Lean
-public import Strata.DDM.Util.Fin
-public import Strata.Util.DecideProp
+public import StrataDDM.Elab.DeclM
+public import StrataDDM.Elab.Tree
+import StrataDDM.HNF
+import all StrataDDM.Util.Array
+import all StrataDDM.Util.Fin
+import all StrataDDM.Util.Lean
+public import StrataDDM.Util.Fin
+import all StrataDDM.Util.DecideProp
 
 open Lean (
     Message

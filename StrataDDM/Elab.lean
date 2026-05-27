@@ -5,17 +5,17 @@
 -/
 module
 
-import Strata.DDM.BuiltinDialects
-public import Strata.DDM.Elab.DeclM
-public import Strata.DDM.Elab.DialectM
-public import Strata.DDM.Ion
-import Strata.DDM.Util.Ion.Serialize
+import StrataDDM.BuiltinDialects
+public import StrataDDM.Elab.DeclM
+public import StrataDDM.Elab.DialectM
+public import StrataDDM.Ion
+import StrataDDM.Util.Ion.Serialize
 
-import all Strata.DDM.Util.ByteArray
-import all Strata.DDM.Util.Lean
-public import Strata.DDM.BuiltinDialects.Init
-public import Strata.DDM.BuiltinDialects.StrataDDL
-public import Strata.DDM.Util.Lean
+import all StrataDDM.Util.ByteArray
+import all StrataDDM.Util.Lean
+public import StrataDDM.BuiltinDialects.Init
+public import StrataDDM.BuiltinDialects.StrataDDL
+public import StrataDDM.Util.Lean
 
 open Lean (Message)
 open Strata.Parser (InputContext)

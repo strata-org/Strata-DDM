@@ -4,7 +4,7 @@
   SPDX-License-Identifier: Apache-2.0 OR MIT
 -/
 module
-public import Strata.DDM.AST
+public import StrataDDM.AST
 
 /-!
 Runtime support for converting AST representations back to generated types.

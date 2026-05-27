@@ -5,7 +5,7 @@
 -/
 module
 
-import Strata.DDM.Integration.Lean
+import StrataDDM.Integration.Lean
 
 -- Test that Bool can be used as an inductive type with true/false operators
 #dialect

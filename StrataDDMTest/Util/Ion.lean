@@ -5,9 +5,9 @@
 -/
 module
 
-import all Strata.DDM.Util.ByteArray
-meta import Strata.DDM.Util.Ion
-import Strata.DDM.Util.Ion
+import all StrataDDM.Util.ByteArray
+meta import StrataDDM.Util.Ion
+import StrataDDM.Util.Ion
 
 open Ion
 open Strata

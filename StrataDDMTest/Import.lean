@@ -5,7 +5,7 @@
 -/
 module
 
-import StrataTest.DDM.Elab
+import StrataDDMTest.Elab
 -- This tests that we can import a module and see dialects declared there.
 
 /--

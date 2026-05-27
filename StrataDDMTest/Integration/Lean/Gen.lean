@@ -5,7 +5,7 @@
 -/
 module
 
-import Strata.DDM.Integration.Lean
+import StrataDDM.Integration.Lean
 
 /-!
 Tests for `#strata_gen`: exercises empty dialects, a dialect with types,
@@ -123,11 +123,10 @@ namespace TestDialect
 info: private inductive TestDialect.test : Type → Type
 number of parameters: 1
 constructors:
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.test.foo : {α : Type} → α → Expr α → test α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.test.identTest : {α : Type} →
-  α → Strata.Ann String α → test α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.test.numTest : {α : Type} → α → Strata.Ann Nat α → test α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.test.strTest : {α : Type} → α → Strata.Ann String α → test α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.test.foo : {α : Type} → α → Expr α → test α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.test.identTest : {α : Type} → α → Strata.Ann String α → test α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.test.numTest : {α : Type} → α → Strata.Ann Nat α → test α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.test.strTest : {α : Type} → α → Strata.Ann String α → test α
 
 -/
 #guard_msgs in
@@ -137,7 +136,7 @@ _private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.test.strTest : {α : 
 info: private inductive TestDialect.MutA : Type → Type
 number of parameters: 1
 constructors:
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.MutA.opA : {α : Type} → α → MutB α → MutA α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.MutA.opA : {α : Type} → α → MutB α → MutA α
 -/
 #guard_msgs in
 #print MutA
@@ -146,7 +145,7 @@ _private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.MutA.opA : {α : Type
 info: private inductive TestDialect.MutB : Type → Type
 number of parameters: 1
 constructors:
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.MutB.opB : {α : Type} → α → MutA α → MutB α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.MutB.opB : {α : Type} → α → MutA α → MutB α
 -/
 #guard_msgs in
 #print MutB
@@ -155,8 +154,8 @@ _private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.MutB.opB : {α : Type
 info: private inductive TestDialect.TypeP : Type → Type
 number of parameters: 1
 constructors:
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.TypeP.expr : {α : Type} → TestDialectType α → TypeP α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.TypeP.type : {α : Type} → α → TypeP α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.TypeP.expr : {α : Type} → TestDialectType α → TypeP α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.TypeP.type : {α : Type} → α → TypeP α
 -/
 #guard_msgs in
 #print TypeP
@@ -177,12 +176,12 @@ info: private opaque TestDialect.Expr.toAst : {α : Type} → [Inhabited α] →
 info: private inductive TestDialect.Expr : Type → Type
 number of parameters: 1
 constructors:
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.Expr.fvar : {α : Type} → α → Nat → Expr α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.Expr.bvar : {α : Type} → α → Nat → Expr α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.Expr.app : {α : Type} → α → Expr α → Expr α → Expr α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.Expr.trueExpr : {α : Type} → α → Expr α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.Expr.and : {α : Type} → α → Expr α → Expr α → Expr α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.Expr.lambda : {α : Type} →
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.Expr.fvar : {α : Type} → α → Nat → Expr α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.Expr.bvar : {α : Type} → α → Nat → Expr α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.Expr.app : {α : Type} → α → Expr α → Expr α → Expr α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.Expr.trueExpr : {α : Type} → α → Expr α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.Expr.and : {α : Type} → α → Expr α → Expr α → Expr α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.Expr.lambda : {α : Type} →
   α → TestDialectType α → Bindings α → Expr α → Expr α
 -/
 #guard_msgs in
@@ -192,16 +191,16 @@ _private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.Expr.lambda : {α : T
 info: private inductive TestDialect.TestDialectType : Type → Type
 number of parameters: 1
 constructors:
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.TestDialectType.bvar : {α : Type} →
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.TestDialectType.bvar : {α : Type} →
   α → Nat → TestDialectType α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.TestDialectType.tvar : {α : Type} →
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.TestDialectType.tvar : {α : Type} →
   α → String → TestDialectType α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.TestDialectType.fvar : {α : Type} →
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.TestDialectType.fvar : {α : Type} →
   α → Nat → Array (TestDialectType α) → TestDialectType α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.TestDialectType.arrow : {α : Type} →
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.TestDialectType.arrow : {α : Type} →
   α → TestDialectType α → TestDialectType α → TestDialectType α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.TestDialectType.bool : {α : Type} → α → TestDialectType α
-_private.StrataTest.DDM.Integration.Lean.Gen.0.TestDialect.TestDialectType.set : {α : Type} →
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.TestDialectType.bool : {α : Type} → α → TestDialectType α
+_private.StrataDDMTest.Integration.Lean.Gen.0.TestDialect.TestDialectType.set : {α : Type} →
   α → TestDialectType α → TestDialectType α
 -/
 #guard_msgs in
@@ -267,7 +266,7 @@ inductive Stmt : Type → Type where
   | placeholder : Stmt α
 
 /--
-error: #strata_gen: 'Stmt' already exists as '_private.StrataTest.DDM.Integration.Lean.Gen.0.DuplicateNameTest.Stmt'.
+error: #strata_gen: 'Stmt' already exists as '_private.StrataDDMTest.Integration.Lean.Gen.0.DuplicateNameTest.Stmt'.
 -/
 #guard_msgs in
 #strata_gen DupDialect

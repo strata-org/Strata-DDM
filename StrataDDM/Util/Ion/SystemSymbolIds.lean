@@ -6,8 +6,8 @@
 module
 
 import Lean.Elab.Command -- shake: keep
-public import Strata.DDM.Util.Ion.AST
-meta import Strata.DDM.Util.Ion.SymbolTable --shake: keep
+public import StrataDDM.Util.Ion.AST
+meta import StrataDDM.Util.Ion.SymbolTable --shake: keep
 
 -- Use metaprogramming to declare `{sym}SymbolId : SymbolId` for each system symbol.
 section

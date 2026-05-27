@@ -5,10 +5,10 @@
 -/
 module
 
-public import Strata.DDM.AST
-import all Strata.DDM.Util.Format
-import all Strata.DDM.Util.Nat
-import all Strata.DDM.Util.String
+public import StrataDDM.AST
+import all StrataDDM.Util.Format
+import all StrataDDM.Util.Nat
+import all StrataDDM.Util.String
 
 open Std (Format format)
 

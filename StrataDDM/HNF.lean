@@ -5,8 +5,8 @@
 -/
 
 module
-public import Strata.DDM.AST
-import all Strata.DDM.Util.Array
+public import StrataDDM.AST
+import all StrataDDM.Util.Array
 
 public section
 namespace Strata

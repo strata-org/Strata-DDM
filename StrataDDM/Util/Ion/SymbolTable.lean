@@ -5,7 +5,7 @@
 -/
 module
 
-public import Strata.DDM.Util.Ion.AST
+public import StrataDDM.Util.Ion.AST
 
 public section
 namespace Ion

@@ -6,9 +6,9 @@
 module
 
 
-public import Strata.DDM.Elab.LoadedDialects
-import all Strata.DDM.Util.Lean
-import all Strata.DDM.Util.PrattParsingTables
+public import StrataDDM.Elab.LoadedDialects
+import all StrataDDM.Util.Lean
+import all StrataDDM.Util.PrattParsingTables
 
 set_option autoImplicit false
 

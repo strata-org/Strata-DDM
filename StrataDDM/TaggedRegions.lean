@@ -5,7 +5,7 @@
 -/
 module
 
-import all Strata.DDM.Util.String
+import all StrataDDM.Util.String
 
 public import Lean.PrettyPrinter.Formatter
 public import Lean.PrettyPrinter.Parenthesizer

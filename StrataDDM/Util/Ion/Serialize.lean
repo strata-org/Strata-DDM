@@ -5,8 +5,8 @@
 -/
 module
 
-public import Strata.DDM.Util.Ion.AST
-import all Strata.DDM.Util.ByteArray
+public import StrataDDM.Util.Ion.AST
+import all StrataDDM.Util.ByteArray
 
 namespace Strata.ByteArray
 

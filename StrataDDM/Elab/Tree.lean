@@ -5,7 +5,7 @@
 -/
 module
 
-public import Strata.DDM.Format
+public import StrataDDM.Format
 set_option autoImplicit false
 
 open Lean (Syntax)

@@ -5,15 +5,15 @@
 -/
 module
 
-import Strata.DDM.BuiltinDialects.Init
-import Strata.DDM.Elab
+import StrataDDM.BuiltinDialects.Init
+import StrataDDM.Elab
 
 /-
 Allows testing whether a DDM dialect can parse and print a given program without losing information.
 -/
 open Strata
 
-namespace StrataTest.DDM
+namespace StrataDDMTest
 
 /-- Remove C-style comments (// and /* */) from a string -/
 def stripComments (s : String) : String :=
@@ -111,4 +111,4 @@ def printTestResult (result : GrammarTestResult) (showFormatted : Bool := true) 
       IO.println "✗ Formatted output differs from input"
       IO.println "(This is expected when comments are present in the source)"
 
-end StrataTest.DDM
+end StrataDDMTest

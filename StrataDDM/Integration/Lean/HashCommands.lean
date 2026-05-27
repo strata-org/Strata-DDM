@@ -6,14 +6,14 @@
 module
 
 import Lean.Elab.Command
-public meta import Strata.DDM.Elab
-public meta import Strata.DDM.Integration.Lean.Env
-public meta import Strata.DDM.Integration.Lean.ToExpr
-public meta import Strata.DDM.TaggedRegions
-import Strata.DDM.Elab.DeclM
-import Strata.DDM.Integration.Lean.Env
-import Strata.DDM.Integration.Lean.ToExpr
-import Strata.DDM.TaggedRegions
+public meta import StrataDDM.Elab
+public meta import StrataDDM.Integration.Lean.Env
+public meta import StrataDDM.Integration.Lean.ToExpr
+public meta import StrataDDM.TaggedRegions
+import StrataDDM.Elab.DeclM
+import StrataDDM.Integration.Lean.Env
+import StrataDDM.Integration.Lean.ToExpr
+import StrataDDM.TaggedRegions
 
 open Lean
 open Lean.Elab (throwUnsupportedSyntax)
@@ -186,14 +186,34 @@ meta def strataProgramImpl : TermElab := fun stx tp => do
 
 syntax (name := loadDialectCommand) "#load_dialect" str : command
 
-private def resolveLeanRelPath {m} [Monad m] [HasInputContext m] [MonadError m] (path : FilePath) : m FilePath := do
+/-- Derive the package source root from a module's file path and name by
+stripping one directory component per name part. For example, given
+`/repo/Strata/Languages/Foo.lean` and module name `Strata.Languages.Foo`,
+returns `/repo`. -/
+def getModuleRoot (path : FilePath) (modName : Name) : Except String FilePath := do
+  let depth := modName.getNumParts
+  let some dir := path.parent
+    | throw s!"cannot get parent of file path '{path}'"
+  let mut dir := dir
+  for _ in List.range (depth - 1) do
+    let some parent := dir.parent
+      | throw s!"cannot resolve package root from '{path}' \
+          with module '{modName}' (ran out of parent directories)"
+    dir := parent
+  pure dir
+
+/-- Resolve a relative path against the current package's source root.
+Absolute paths are returned unchanged. -/
+private def resolveLeanRelPath (path : FilePath) : CommandElabM FilePath := do
   if path.isAbsolute then
-    pure path
-  else
-    let leanPath ← HasInputContext.getFileName
-    let .some leanDir := leanPath.parent
-      | throwError "Current file {leanPath} does not have a parent."
-    pure <| leanDir / path
+    return path
+  let mut currentFileName : FilePath := (← read).fileName
+  if currentFileName.isRelative then
+    currentFileName := (← IO.currentDir) / currentFileName
+  let modName := (← getEnv).mainModule
+  match getModuleRoot currentFileName modName with
+  | .ok dir => pure <| dir / path
+  | .error msg => throwError msg
 
 @[command_elab loadDialectCommand]
 def loadDialectImpl : CommandElab := fun (stx : Syntax) => do

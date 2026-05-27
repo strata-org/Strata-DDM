@@ -4,9 +4,9 @@
   SPDX-License-Identifier: Apache-2.0 OR MIT
 -/
 module
-public import Strata.DDM.AST
+public import StrataDDM.AST
 
-import Strata.Util.DecideProp
+import all StrataDDM.Util.DecideProp
 
 public section
 namespace Strata.Elab

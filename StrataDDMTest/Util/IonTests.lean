@@ -5,7 +5,7 @@
 -/
 
 module
-import all Strata.DDM.Util.Ion
+import all StrataDDM.Util.Ion
 
 namespace Ion.Tests
 

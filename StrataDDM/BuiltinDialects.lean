@@ -4,10 +4,10 @@
   SPDX-License-Identifier: Apache-2.0 OR MIT
 -/
 module
-public import Strata.DDM.Elab.LoadedDialects
-public import Strata.DDM.BuiltinDialects.Init
-public import Strata.DDM.BuiltinDialects.StrataDDL
-public import Strata.DDM.BuiltinDialects.StrataHeader
+public import StrataDDM.Elab.LoadedDialects
+public import StrataDDM.BuiltinDialects.Init
+public import StrataDDM.BuiltinDialects.StrataDDL
+public import StrataDDM.BuiltinDialects.StrataHeader
 
 public section
 namespace Strata.Elab.LoadedDialects

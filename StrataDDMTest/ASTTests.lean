@@ -5,7 +5,7 @@
 -/
 module
 
-meta import Strata.DDM.AST
+meta import StrataDDM.AST
 
 namespace Strata.AST.Tests
 

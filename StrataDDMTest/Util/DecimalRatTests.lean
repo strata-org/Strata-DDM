@@ -5,7 +5,7 @@
 -/
 module
 
-meta import Strata.DDM.Util.DecimalRat
+meta import StrataDDM.Util.DecimalRat
 
 namespace Strata.Decimal.Tests
 

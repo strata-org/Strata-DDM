@@ -5,9 +5,9 @@
 -/
 module
 
-public import Strata.DDM.AST
+public import StrataDDM.AST
 
-import all Strata.DDM.AST
+import all StrataDDM.AST
 
 public section
 namespace Strata.Program

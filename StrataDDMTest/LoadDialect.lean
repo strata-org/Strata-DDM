@@ -9,7 +9,7 @@ module
 Test the #load_dialect command and also validate example dialects parse.
 -/
 
-import Strata.DDM.Integration.Lean
+import StrataDDM.Integration.Lean
 
 namespace Strata.Test
 
@@ -22,13 +22,13 @@ error: Could not find file INVALID!
 -- This tests that dialects must be loaded in order.
 
 /--
-error: 1 error(s) in ../../Examples/dialects/Arith.dialect.st:
+error: 1 error(s) in StrataDDMTest/dialects/Arith.dialect.st:
   2:7: Unknown dialect Bool
 -/
 #guard_msgs in
-#load_dialect "../../Examples/dialects/Arith.dialect.st"
+#load_dialect "StrataDDMTest/dialects/Arith.dialect.st"
 
-#load_dialect "../../Examples/dialects/Bool.dialect.st"
+#load_dialect "StrataDDMTest/dialects/Bool.dialect.st"
 
 namespace Bool
 #strata_gen Bool
@@ -42,7 +42,7 @@ info: Strata.Test.Bool.Expr.boolLit {α : Type} : α → (b : Ann _root_.Bool α
 
 end Bool
 
-#load_dialect "../../Examples/dialects/Arith.dialect.st"
+#load_dialect "StrataDDMTest/dialects/Arith.dialect.st"
 
 namespace Arith
 #strata_gen Arith

@@ -5,15 +5,15 @@
 -/
 module
 
-public import Strata.DDM.Util.Ion.AST
-public import Strata.DDM.Util.Ion.Deserialize
-public import Strata.DDM.Util.Ion.Serialize
-public import Strata.DDM.Util.Ion.SymbolTable
-public import Strata.DDM.Util.Ion.SystemSymbolIds
+public import StrataDDM.Util.Ion.AST
+public import StrataDDM.Util.Ion.Deserialize
+public import StrataDDM.Util.Ion.Serialize
+public import StrataDDM.Util.Ion.SymbolTable
+public import StrataDDM.Util.Ion.SystemSymbolIds
 
-import all Strata.DDM.Util.ByteArray
-import all Strata.DDM.Util.Fin
-import Strata.DDM.Util.Ion.JSON
+import all StrataDDM.Util.ByteArray
+import all StrataDDM.Util.Fin
+import StrataDDM.Util.Ion.JSON
 
 public section
 namespace Ion

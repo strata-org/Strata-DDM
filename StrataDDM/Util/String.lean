@@ -5,7 +5,7 @@
 -/
 module
 import all Init.Data.String.Defs
-import all Strata.DDM.Util.ByteArray
+import all StrataDDM.Util.ByteArray
 
 /-
 This file contains auxillary definitions for String.

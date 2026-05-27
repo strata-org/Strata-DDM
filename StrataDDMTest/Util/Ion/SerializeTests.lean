@@ -5,7 +5,7 @@
 -/
 
 module
-import all Strata.DDM.Util.Ion.Serialize
+import all StrataDDM.Util.Ion.Serialize
 
 namespace Ion.Serialize.Tests
 

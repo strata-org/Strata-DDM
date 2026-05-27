@@ -7,7 +7,7 @@ module
 
 import Lean.Data.Json.Basic
 
-import Strata.DDM.Util.Ion.AST
+import StrataDDM.Util.Ion.AST
 
 
 namespace Strata.Decimal

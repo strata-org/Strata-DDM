@@ -29,10 +29,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Check copyright headers
-        run: python3 .github/scripts/check_copyright_headers.py .
-        shell: bash
-      - name: Check for trailing whitespace
-        run: .github/scripts/lintWhitespace.sh
-      - name: Check for import Lean
-        run: .github/scripts/checkLeanImport.sh
+      - uses: strata-org/Strata/.github/actions/check-copyright-headers@main
+      - uses: strata-org/Strata/.github/actions/lint-whitespace@main
+        with:
+          directory: .
+      - uses: strata-org/Strata/.github/actions/check-lean-import@main

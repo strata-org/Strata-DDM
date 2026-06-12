@@ -5,7 +5,7 @@
 -/
 module
 
-import Strata.DDM.Integration.Lean
+import StrataDDM.Integration.Lean
 
 /-! ## Test: `DeclState.ofDialects` is order-independent
 
@@ -20,7 +20,7 @@ With the old `openLoadedDialect!` code, the second call would panic because the
 parent is already open.
 -/
 
-open Strata Strata.Elab
+open StrataDDM StrataDDM.Elab
 
 -- Declare a parent dialect
 #guard_msgs in
@@ -45,7 +45,7 @@ info: true
 -/
 #guard_msgs in
 #eval show Lean.CoreM _ from do
-  let loaded := (Strata.dialectExt.getState (← Lean.getEnv)).loaded
+  let loaded := (StrataDDM.dialectExt.getState (← Lean.getEnv)).loaded
   -- Start from a fresh DeclState
   let s : DeclState := { openDialects := #[], openDialectSet := {} }
   -- Open child first — this transitively opens the parent
@@ -61,6 +61,6 @@ info: true
 -/
 #guard_msgs in
 #eval show Lean.CoreM _ from do
-  let loaded := (Strata.dialectExt.getState (← Lean.getEnv)).loaded
+  let loaded := (StrataDDM.dialectExt.getState (← Lean.getEnv)).loaded
   let s := DeclState.ofDialects loaded
   return "OfDialectsParent" ∈ s.openDialectSet && "OfDialectsChild" ∈ s.openDialectSet

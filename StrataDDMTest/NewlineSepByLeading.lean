@@ -5,7 +5,7 @@
 -/
 module
 
-import Strata.DDM.Integration.Lean
+import StrataDDM.Integration.Lean
 
 /-!
 # Test for NewlineSepBy as leading argument
@@ -44,7 +44,7 @@ info: program NewlineSepByLeadingTest;
 #guard
   let cmd := testItems.commands[0]!
   match cmd.args[0]? with
-  | some (Strata.ArgF.seq _ .newline items) => items.size == 3
+  | some (StrataDDM.ArgF.seq _ .newline items) => items.size == 3
   | _ => false
 
 -- Negative test: left-recursive NewlineSepBy (inner category = op's own category) is rejected

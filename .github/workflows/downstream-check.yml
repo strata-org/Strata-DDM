@@ -1,0 +1,115 @@
+# Copyright Strata Contributors
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+# Downstream check: builds Strata against this PR's StrataDDM code, so we catch
+# breakage before it lands on main. Advisory only — visible on the PR but does
+# not gate merge.
+#
+# Mechanism: check out the PR's StrataDDM, clone Strata, rewrite Strata's
+# `require "StrataDDM"` to a local path pointing at the checked-out PR code
+# (fork-safe: no need for the PR head SHA to exist on the strata-org remote),
+# then `lake update StrataDDM` + build + test.
+#
+# Transitive breakage (e.g., DDM -> Strata -> Boole/Python/CLI) is
+# intentionally NOT chased here: this check covers the DDM->Strata API
+# boundary. Anything that only surfaces further downstream is caught when the
+# DDM rev is bumped in a Strata PR, which fires Strata's own downstream-check.
+#
+# Triggers mirror Strata's downstream-check: non-draft PRs (ready_for_review +
+# synchronize) and the `!downstream-check` comment from a repo collaborator.
+
+name: Downstream check
+
+on:
+  pull_request:
+    types: [ready_for_review, synchronize]
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: downstream-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+      head_sha: ${{ steps.gate.outputs.head_sha }}
+    steps:
+      - name: Gate
+        id: gate
+        uses: strata-org/Strata/.github/actions/downstream-gate@main
+
+  downstream:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    name: Strata
+    steps:
+      - name: Check out PR's StrataDDM
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.gate.outputs.head_sha }}
+          path: upstream
+
+      - name: Clone Strata
+        run: git clone --depth 1 https://github.com/strata-org/Strata.git downstream
+
+      - name: Override StrataDDM require -> local PR checkout
+        uses: strata-org/Strata/.github/actions/rewrite-require@main
+        with:
+          lakefile: downstream/lakefile.toml
+          package: StrataDDM
+          path: ../upstream
+
+      # Strata's full test suite needs the same toolchain as its own CI:
+      # cvc5 + z3 for the SMT pipeline, .NET + the ion-java jar for the Java
+      # codegen test. Mirror Strata/.github/workflows/ci.yml's setup so a
+      # green check here means the same thing Strata's own CI does.
+      - name: Install cvc5
+        uses: ./downstream/.github/actions/install-cvc5
+      - name: Install z3
+        uses: ./downstream/.github/actions/install-z3
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8.0.x'
+      - name: Download ion-java jar for Java codegen test
+        run: |
+          wget -q -O downstream/StrataTestExtra/Languages/Java/testdata/ion-java-1.11.11.jar \
+            https://github.com/amazon-ion/ion-java/releases/download/v1.11.11/ion-java-1.11.11.jar
+
+      - name: Restore lake cache
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            downstream/.lake
+          key: downstream-Strata-${{ runner.os }}-${{ needs.gate.outputs.head_sha }}
+          restore-keys: |
+            downstream-Strata-${{ runner.os }}-
+
+      - name: lake update StrataDDM
+        working-directory: downstream
+        run: lake update StrataDDM
+
+      - name: Build Strata
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: downstream
+          use-github-cache: false
+          test: false
+      - name: Run Strata tests
+        working-directory: downstream
+        run: lake test
+
+      - name: Save lake cache
+        if: always()
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            downstream/.lake
+          key: downstream-Strata-${{ runner.os }}-${{ needs.gate.outputs.head_sha }}

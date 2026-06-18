@@ -15,45 +15,31 @@
 # boundary. Anything that only surfaces further downstream is caught when the
 # DDM rev is bumped in a Strata PR, which fires Strata's own downstream-check.
 #
-# Triggers mirror Strata's downstream-check: non-draft PRs (ready_for_review +
-# synchronize) and the `!downstream-check` comment from a repo collaborator.
+# Trigger: non-draft PRs only (ready_for_review + every push via synchronize).
 
 name: Downstream check
 
 on:
   pull_request:
     types: [ready_for_review, synchronize]
-  issue_comment:
-    types: [created]
 
 concurrency:
-  group: downstream-${{ github.event.issue.number || github.event.pull_request.number }}
+  group: downstream-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  gate:
-    runs-on: ubuntu-latest
-    outputs:
-      run: ${{ steps.gate.outputs.run }}
-      head_sha: ${{ steps.gate.outputs.head_sha }}
-    steps:
-      - name: Gate
-        id: gate
-        uses: strata-org/Strata/.github/actions/downstream-gate@main
-
   downstream:
-    needs: gate
-    if: needs.gate.outputs.run == 'true'
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     name: Strata
     steps:
       - name: Check out PR's StrataDDM
         uses: actions/checkout@v6
         with:
-          ref: ${{ needs.gate.outputs.head_sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
           path: upstream
 
       - name: Clone Strata
@@ -88,7 +74,7 @@ jobs:
         with:
           path: |
             downstream/.lake
-          key: downstream-Strata-${{ runner.os }}-${{ needs.gate.outputs.head_sha }}
+          key: downstream-Strata-${{ runner.os }}-${{ github.event.pull_request.head.sha }}
           restore-keys: |
             downstream-Strata-${{ runner.os }}-
 
@@ -112,4 +98,4 @@ jobs:
         with:
           path: |
             downstream/.lake
-          key: downstream-Strata-${{ runner.os }}-${{ needs.gate.outputs.head_sha }}
+          key: downstream-Strata-${{ runner.os }}-${{ github.event.pull_request.head.sha }}

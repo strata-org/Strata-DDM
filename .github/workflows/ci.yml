@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Build StrataDDM and tests
         # Building StrataDDMTest runs the test suite: the tests are
         # `#guard_msgs` / `#eval` checks that execute during elaboration.
@@ -28,7 +28,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - uses: strata-org/Strata/.github/actions/check-copyright-headers@main
       - uses: strata-org/Strata/.github/actions/lint-whitespace@main
         with:

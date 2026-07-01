@@ -24,10 +24,9 @@ def zero : Decimal := { mantissa := 0, exponent := 0 }
 
 protected def ofInt (x : Int) : Decimal := { mantissa := x, exponent := 0 }
 
-private opaque maxPrettyExponent : Int := 5
-
-private opaque minPrettyExponent : Int := -5
-
+-- Always emit a plain decimal literal. SMT-LIB has no scientific-notation
+-- literal, so a form like `142e10` would be parsed as a free symbol `e10`
+-- rather than a number; hence every exponent is expanded in full.
 def toString (d : Decimal) : String :=
   let m := d.mantissa
   let e := d.exponent
@@ -35,9 +34,12 @@ def toString (d : Decimal) : String :=
     s!"0.0"
   else if e == 0 then
     s!"{m}.0"
-  else if e > 0 ∧ e ≤ maxPrettyExponent then
+  else if e > 0 then
+    -- Positive exponent: append `e` trailing zeros and a `.0` fractional part.
     s!"{m}{String.replicate e.natAbs '0'}.0"
-  else if e < 0 ∧ e ≥ minPrettyExponent then
+  else
+    -- Negative exponent: shift the decimal point left by `|e|` digits,
+    -- padding with leading zeros in the fractional part as needed.
     let ms := if m < 0 then "-" else ""
     let ma := m.natAbs
     let width := (-e).natAbs
@@ -46,8 +48,6 @@ def toString (d : Decimal) : String :=
     let fracStr := s!"{md}"
     let padded := String.replicate (width - fracStr.length) '0' ++ fracStr
     s!"{ms}{ma / ne}.{padded}"
-  else
-    s!"{m}e{e}"
 
 instance : ToString Decimal where
   toString := private Decimal.toString

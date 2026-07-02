@@ -17,10 +17,12 @@ open StrataDDM
 dialect AFM;
 op plain (@[noExponent] d : Decimal) : Command => "plain " d ";";
 op raw (d : Decimal) : Command => "raw " d ";";
+op combo (@[noExponent, unwrap] d : Decimal) : Command => "combo " d ";";
 #end
 
 def progPlain := #strata program AFM; plain 6283185307179586e-15; #end
 def progRaw   := #strata program AFM; raw 6283185307179586e-15; #end
+def progCombo := #strata program AFM; combo 6283185307179586e-15; #end
 
 -- The `@[noExponent]` argument annotation renders the plain, SMT-LIB-valid
 -- literal with no render-context override set.
@@ -34,5 +36,10 @@ def progRaw   := #strata program AFM; raw 6283185307179586e-15; #end
 -- forcing `scientific` overrides the `@[noExponent]` on `plain`.
 #guard Program.toString progPlain { formatModes := Std.HashMap.ofList [("decimal", "scientific")] }
         = "program AFM;\nplain 6283185307179586e-15;"
+
+-- The multi-attribute comma form `@[noExponent, unwrap]` both parses and renders
+-- plain — the exact shape the SMT `sc_decimal` argument needs (it already carries
+-- `@[unwrap]`). This mirrors the SMT use case end-to-end.
+#guard Program.toString progCombo = "program AFM;\ncombo 6.283185307179586;"
 
 end StrataDDM.ArgFormatMode.Tests

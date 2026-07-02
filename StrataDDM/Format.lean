@@ -6,6 +6,7 @@
 module
 
 public import StrataDDM.AST
+public import StrataDDM.Render
 import all StrataDDM.Util.Format
 import all StrataDDM.Util.Nat
 import all StrataDDM.Util.String
@@ -93,6 +94,9 @@ structure FormatOptions where
   alwaysParen : Bool := false
   /-- Use SMT-LIB 2.7 string escaping (`""` for quotes) instead of C-style (`\"`). -/
   smtStringEscaping : Bool := false
+  /-- Force a format mode per literal kind (e.g. `"decimal"`), overriding any
+      dialect-declared spec. Empty means "use each type's default". -/
+  formatModes : Std.HashMap String FormatMode := {}
 
 /--
 A format context provides callbacks and information needed to
@@ -351,6 +355,18 @@ private abbrev FormatM := ReaderT FormatContext (StateM FormatState)
 private def pformat {α} [ToStrataFormat α] (a : α) : FormatM PrecFormat :=
   fun c s => (mformat a c s, s)
 
+/-- Wrap a finished literal string as a max-precedence `PrecFormat` (literals
+    never need parentheses), matching the precedence `ofFormat` assigns to
+    numeric/decimal literals. -/
+private def pformatStr (s : String) : PrecFormat :=
+  { format := Format.text s, prec := maxPrec + 1 }
+
+/-- Resolve the format mode for a literal of the given kind. Consults only the
+    render-context override (`FormatOptions.formatModes`); dialect-level specs
+    are layered in separately. -/
+private def resolveMode (ctx : FormatContext) (kind : String) : Option FormatMode :=
+  ctx.opts.formatModes[kind]?
+
 mutual
 
 /- Renders expression to format and precedence of outmost operator. -/
@@ -410,7 +426,9 @@ private partial def ArgF.mformatM {α} : ArgF α → FormatM PrecFormat
 | .cat e => pformat e
 | .ident _ x => return .atom (formatIdent x)
 | .num _ x => pformat x
-| .decimal _ v => pformat v
+| .decimal _ v => do
+    let ctx ← read
+    pure <| pformatStr (StrataRender.render (resolveMode ctx "decimal") v)
 | .strlit _ s => do
     let ctx ← read
     let esc := if ctx.opts.smtStringEscaping then escapeSMTStringLit s else escapeStringLit s

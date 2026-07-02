@@ -49,6 +49,10 @@ def toString (d : Decimal) : String :=
     let padded := String.replicate (width - fracStr.length) '0' ++ fracStr
     s!"{ms}{ma / ne}.{padded}"
 
+/-- Scientific rendering: raw `mantissa`e`exponent`. Not valid SMT-LIB; selectable
+    via a format mode where a human-facing scientific form is wanted. -/
+def toSciString (d : Decimal) : String := s!"{d.mantissa}e{d.exponent}"
+
 instance : ToString Decimal where
   toString := private Decimal.toString
 

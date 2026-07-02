@@ -33,4 +33,10 @@ open StrataDDM
 #guard s!"{Decimal.mk 1 (-3)}"  = "0.001"
 #guard s!"{Decimal.mk (-2) (-2)}" = "-0.02"
 
+-- Scientific form is the raw mantissa`e`exponent (the pre-fix representation),
+-- now selectable rather than the default.
+#guard StrataDDM.Decimal.toSciString (Decimal.mk 6283185307179586 (-15)) = "6283185307179586e-15"
+#guard StrataDDM.Decimal.toSciString (Decimal.mk 271828 8) = "271828e8"
+#guard StrataDDM.Decimal.toSciString (Decimal.mk 0 0) = "0e0"
+
 end StrataDDM.Decimal.Tests

@@ -11,19 +11,19 @@ public section
 namespace StrataDDM
 
 /-- A format "mode" is a name selecting one of a type's textual representations
-    (e.g. `noExponent`, `scientific`). `none` means the type's default. -/
+    (e.g. `noExponent`, `scientific`). The empty string and `"default"` both
+    denote the type's default representation. -/
 abbrev FormatMode := String
 
 /-- Types whose literal rendering can be selected by a named mode.
-    `render none x` is the type's default representation. -/
+    `render "" x` (equivalently `render "default" x`) is the type's default. -/
 class StrataRender (α : Type) where
-  render : Option FormatMode → α → String
+  render : FormatMode → α → String
 
 instance : StrataRender Decimal where
   render
-    | none,               d => Decimal.toString d
-    | some "scientific",  d => Decimal.toSciString d
-    | some "noExponent",  d => Decimal.toString d
-    | some _,             d => Decimal.toString d
+    | "noExponent",  d => Decimal.toPlainString d
+    | "scientific",  d => Decimal.toSciString d
+    | _,             d => Decimal.toString d
 
 end StrataDDM

@@ -24,10 +24,15 @@ def zero : Decimal := { mantissa := 0, exponent := 0 }
 
 protected def ofInt (x : Int) : Decimal := { mantissa := x, exponent := 0 }
 
--- Always emit a plain decimal literal. SMT-LIB has no scientific-notation
--- literal, so a form like `142e10` would be parsed as a free symbol `e10`
--- rather than a number; hence every exponent is expanded in full.
-def toString (d : Decimal) : String :=
+private opaque maxPrettyExponent : Int := 5
+
+private opaque minPrettyExponent : Int := -5
+
+/-- Always expand to a plain decimal literal, with no scientific notation.
+    SMT-LIB has no scientific-notation numeric literal (a form like `142e10`
+    parses as the free symbol `e10` applied to a number), so consumers that
+    emit SMT select this via the `noExponent` format mode. -/
+def toPlainString (d : Decimal) : String :=
   let m := d.mantissa
   let e := d.exponent
   if m = 0 then
@@ -49,8 +54,30 @@ def toString (d : Decimal) : String :=
     let padded := String.replicate (width - fracStr.length) '0' ++ fracStr
     s!"{ms}{ma / ne}.{padded}"
 
-/-- Scientific rendering: raw `mantissa`e`exponent`. Not valid SMT-LIB; selectable
-    via a format mode where a human-facing scientific form is wanted. -/
+/-- The default rendering: a plain literal within the pretty-print exponent
+    window `[-5, 5]`, and compact scientific notation outside it. -/
+def toString (d : Decimal) : String :=
+  let m := d.mantissa
+  let e := d.exponent
+  if m = 0 then
+    s!"0.0"
+  else if e == 0 then
+    s!"{m}.0"
+  else if e > 0 ∧ e ≤ maxPrettyExponent then
+    s!"{m}{String.replicate e.natAbs '0'}.0"
+  else if e < 0 ∧ e ≥ minPrettyExponent then
+    let ms := if m < 0 then "-" else ""
+    let ma := m.natAbs
+    let width := (-e).natAbs
+    let ne := 10^width
+    let md := ma % ne
+    let fracStr := s!"{md}"
+    let padded := String.replicate (width - fracStr.length) '0' ++ fracStr
+    s!"{ms}{ma / ne}.{padded}"
+  else
+    s!"{m}e{e}"
+
+/-- Always render in scientific form: raw `mantissa`e`exponent`. -/
 def toSciString (d : Decimal) : String := s!"{d.mantissa}e{d.exponent}"
 
 instance : ToString Decimal where

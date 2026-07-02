@@ -361,11 +361,11 @@ private def pformat {α} [ToStrataFormat α] (a : α) : FormatM PrecFormat :=
 private def pformatStr (s : String) : PrecFormat :=
   { format := Format.text s, prec := maxPrec + 1 }
 
-/-- Resolve the format mode for a literal of the given kind. Consults only the
-    render-context override (`FormatOptions.formatModes`); dialect-level specs
-    are layered in separately. -/
-private def resolveMode (ctx : FormatContext) (kind : String) : Option FormatMode :=
-  ctx.opts.formatModes[kind]?
+/-- Resolve the format mode for a literal of the given kind. Consults the
+    render-context override (`FormatOptions.formatModes`); an absent entry
+    yields the default mode (the empty string). -/
+private def resolveMode (ctx : FormatContext) (kind : String) : FormatMode :=
+  ctx.opts.formatModes.getD kind ""
 
 mutual
 

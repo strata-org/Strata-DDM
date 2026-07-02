@@ -166,6 +166,10 @@ def StrataDDL : Dialect := BuiltinM.create! "StrataDDL" #[initDialect] do
   declareMetadata { name := "scope", args := #[.mk "scope" .ident] }
   declareMetadata { name := "unwrap", args := #[] }
   declareMetadata { name := "nonempty", args := #[] }
+  -- Literal rendering modes (marker attributes) selecting a `StrataRender`
+  -- representation for a literal argument, e.g. `@[noExponent] d : Decimal`.
+  declareMetadata { name := "noExponent", args := #[] }
+  declareMetadata { name := "scientific", args := #[] }
   -- Metadata for marking an operation as a constructor definition
   declareMetadata { name := "constructor", args := #[.mk "name" .ident, .mk "fields" .ident] }
   -- Metadata for marking an operation as a constructor list atom (single constructor)

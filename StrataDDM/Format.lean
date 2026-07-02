@@ -107,6 +107,10 @@ structure FormatContext where
   private getFnDecl : QualifiedIdent → Option FunctionDecl
   private getOpDecl : QualifiedIdent → Option OpDecl
   private globalContext : GlobalContext
+  /-- Format mode declared on the argument currently being rendered (via
+      `@[<mode>]` on its `ArgDecl`), if any. Lower precedence than an explicit
+      `opts.formatModes` entry. -/
+  private argFormatMode : Option FormatMode := none
 
 namespace FormatContext
 
@@ -116,6 +120,10 @@ private def explicit : FormatContext where
   getFnDecl _ := none
   getOpDecl _ := none
   globalContext := {}
+
+/-- Set the format mode carried from the current argument's declaration. -/
+def withArgFormatMode (ctx : FormatContext) (mode : Option FormatMode) : FormatContext :=
+  { ctx with argFormatMode := mode }
 
 private def fvarName (ctx : FormatContext) (idx : FreeVarIndex) : String :=
   if let some name := ctx.globalContext.nameOf? idx then
@@ -361,11 +369,14 @@ private def pformat {α} [ToStrataFormat α] (a : α) : FormatM PrecFormat :=
 private def pformatStr (s : String) : PrecFormat :=
   { format := Format.text s, prec := maxPrec + 1 }
 
-/-- Resolve the format mode for a literal of the given kind. Consults the
-    render-context override (`FormatOptions.formatModes`); an absent entry
-    yields the default mode (the empty string). -/
+/-- Resolve the format mode for a literal of the given kind. A caller's explicit
+    render-context override (`FormatOptions.formatModes`) wins; otherwise the mode
+    declared on the current argument (`@[<mode>]`) applies; absent both, the
+    default mode (the empty string). -/
 private def resolveMode (ctx : FormatContext) (kind : String) : FormatMode :=
-  ctx.opts.formatModes.getD kind ""
+  match ctx.opts.formatModes[kind]? with
+  | some m => m
+  | none   => ctx.argFormatMode.getD ""
 
 mutual
 
@@ -497,6 +508,11 @@ private partial def formatArguments (c : FormatContext) (initState : FormatState
                 | some ⟨alvl, aisLt⟩  =>
                   have _ : alvl < a.size := by simp at aisLt; omega
                   pure a[alvl].snd
+          -- An `@[<mode>]` on the argument declaration supplies a default render
+          -- mode for its literal, without a render-context override. A caller's
+          -- explicit `formatModes` entry still wins (applied in `resolveMode`),
+          -- so this only fills in when the caller left the kind unset.
+          let c := c.withArgFormatMode (argDecls[lvl].metadata.formatMode?)
           aux (a.push (args[lvl].mformatM c s))
         else
           .ok a

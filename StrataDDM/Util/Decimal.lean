@@ -16,7 +16,7 @@ namespace StrataDDM
 structure Decimal where
   mantissa : Int
   exponent : Int
-deriving DecidableEq, Inhabited, Repr
+deriving DecidableEq, Inhabited, Repr, Hashable
 
 namespace Decimal
 

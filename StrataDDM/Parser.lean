@@ -732,7 +732,8 @@ def prattParser (cat : QualifiedIdent) (tables : PrattParsingTables) (behavior :
     trailingLoop cat tables c s
 
 def dynamicParser (cat : QualifiedIdent) : Parser :=
-  { fn := fun c s =>
+  let cacheName := (Name.mkSimple cat.dialect).str cat.name
+  { fn := Lean.Parser.withCacheFn cacheName fun c s =>
     let parserState := parserExt.getState c.env
     match parserState[cat]? with
     | some tables =>

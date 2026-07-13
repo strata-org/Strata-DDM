@@ -610,6 +610,21 @@ def declareTVarIndex (metadata : Metadata) : Except String (Option Nat) :=
   | some #[.catbvar nameIdx] => .ok (some nameIdx)
   | some _ => .error s!"Unexpected argument count to declareTVar"
 
+/-- The literal rendering-mode marker declared on this metadata, if any, for
+    `StrataRender`-driven formatting (e.g. `@[noExponent]` on a decimal argument).
+    Returns the marker's unqualified name; the caller parses it into a
+    `FormatMode` via `FormatMode.ofString`.
+
+    Modes are nullary marker attributes matched by unqualified name, so a dialect
+    can self-declare `metadata noExponent;` and the marker is picked up regardless
+    of which dialect qualifies it. -/
+def formatModeName? (metadata : Metadata) : Option String :=
+  metadata.toArray.findSome? fun a =>
+    match a.ident.name with
+    | "noExponent" => some "noExponent"
+    | "scientific" => some "scientific"
+    | _ => none
+
 /-- Returns the index of the value in the binding for the given variable of the scope to use. -/
 private def resultIndex (metadata : Metadata) : Except String (Option Nat) :=
   match metadata[MetadataAttr.scopeName]? with

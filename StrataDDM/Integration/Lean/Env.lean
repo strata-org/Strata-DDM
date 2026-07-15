@@ -17,17 +17,24 @@ public structure PersistentDialect where
   -- Names of dialects that are imported into this dialect
   imports : Array DialectName
   declarations : Array Decl
+  -- Whether type inference/unification runs during elaboration for this
+  -- dialect (set via `dialect_option typecheck off;`). Serialized here so the
+  -- flag survives the export/import round-trip; otherwise a dialect defined in
+  -- one module reverts to the `typecheck := true` default when imported into
+  -- another.
+  typecheck : Bool := true
 
 namespace PersistentDialect
 
-def ofDialect (leanName : Name) (d : Dialect) : PersistentDialect where
+public def ofDialect (leanName : Name) (d : Dialect) : PersistentDialect where
   leanName := leanName
   name := d.name
   imports := d.imports
   declarations := d.declarations
+  typecheck := d.typecheck
 
-def dialect (pd : PersistentDialect) : Dialect :=
-  Dialect.ofArray pd.name pd.imports pd.declarations
+public def dialect (pd : PersistentDialect) : Dialect :=
+  { Dialect.ofArray pd.name pd.imports pd.declarations with typecheck := pd.typecheck }
 
 end PersistentDialect
 

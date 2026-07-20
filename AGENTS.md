@@ -18,22 +18,24 @@ have a generated or hand-written specialized Lean AST plus a transform from the
 generic form. When adding constructs, decide first whether you are touching the
 generic AST (affects every dialect) or a per-dialect specialization.
 
-## The two integration paths
+## The integration path
 
 `StrataDDM/Integration/` is where a dialect crosses from generic AST into
 something usable:
 
-1. **Lean** (`Integration/Lean/`) — the `#strata_gen <Dialect>` command
-   (`Gen.lean`) generates a specialized Lean AST for a loaded dialect, *plus*
-   `ofAst`/`toAst` conversions to and from the generic AST (`OfAstM.lean`).
-   `#load_dialect "<path>"` loads a dialect from a `.dialect.st` file at compile
-   time. These are the macros test files and downstream packages use.
-2. **Java** (`Integration/Java/`) — `generateDialect d package` returns
-   `GeneratedFiles`; `writeJavaFiles baseDir package files` writes them. Output
-   is assembled from the hand-maintained templates in
-   `Integration/Java/templates/` (`Node.java`, `IonSerializer.java`,
-   `SourceRange.java`) — edit those templates for cross-cutting Java changes,
-   not the generated strings.
+- **Lean** (`Integration/Lean/`) — the `#strata_gen <Dialect>` command
+  (`Gen.lean`) generates a specialized Lean AST for a loaded dialect, *plus*
+  `ofAst`/`toAst` conversions to and from the generic AST (`OfAstM.lean`).
+  `#load_dialect "<path>"` loads a dialect from a `.dialect.st` file at compile
+  time. These are the macros test files and downstream packages use.
+
+Java generation no longer lives here. It used to (`Integration/Java/`, driven by
+the `strata javaGen` CLI command, emitting from hand-maintained `Node.java` /
+`IonSerializer.java` / `SourceRange.java` templates), but it generated Java from
+a *dialect definition*. It has been replaced by `getIonSerializer%` in the Strata
+package (`Strata/Java/Gen.lean`), a compile-time elaborator that generates Java
+records from *Lean types* instead. See `docs/DDMJavaCodeGen.md` in the Strata
+package.
 
 ## Embedding dialect text in Lean
 
@@ -46,10 +48,9 @@ or elaborated output — see `StrataDDMTest/Bool.lean` for the canonical shape.
 
 `StrataDDM/Ion.lean` + `Util/Ion/` implement (de)serialization to
 [Ion](https://amazon-ion.github.io/ion-docs/) binary. Dialects are exchanged
-with other tools (including the generated Java library) in this format, so any
-change to the generic AST or a dialect's wire shape must keep the Ion
-serializer, the Ion deserializer, and the Java `IonSerializer.java` template in
-agreement. Roundtrip tests live in `StrataDDMTest/Util/Ion/`.
+with other tools in this format, so any change to the generic AST or a dialect's
+wire shape must keep the Ion serializer and the Ion deserializer in agreement.
+Roundtrip tests live in `StrataDDMTest/Util/Ion/`.
 
 ## Lean module-system conventions
 

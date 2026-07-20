@@ -12,7 +12,6 @@ import StrataDDM.Elab
 import StrataDDM.Util.Ion
 import StrataDDM.BuiltinDialects
 import StrataDDM.AST.Lemmas -- shake: keep
-import StrataDDM.Integration.Java -- shake: keep
 
 /-! ## Strata DDM API
 

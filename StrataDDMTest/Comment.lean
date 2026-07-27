@@ -5,12 +5,13 @@
 -/
 module
 
-import StrataDDM.Integration.Lean
+meta import StrataDDM.Integration.Lean
+import StrataDDM.Integration.Lean.Deps
 
 /-
 This is a small example showing syntax overriding a comment.
 -/
-
+meta section
 #dialect
 dialect Comment;
 
@@ -31,7 +32,7 @@ decl foo;
 //@ inline
 decl bar;
 #end
-
+end
 /--
 info: program Comment;
 decl foo;

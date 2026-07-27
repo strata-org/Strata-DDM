@@ -5,7 +5,7 @@
 -/
 module
 
-import StrataDDM.Integration.Lean
+meta import StrataDDM.Integration.Lean
 
 /-!
 # Tests for datatype blocks in DDM
@@ -13,7 +13,7 @@ import StrataDDM.Integration.Lean
 Tests that datatypes (single and mutually recursive) can be declared via
 a `command_datatypes` operation using `preRegisterTypes`.
 -/
-
+meta section
 #dialect
 dialect TestMutual;
 

@@ -41,7 +41,7 @@ def Array.mapM_off_intern {α β} (as : Array α) (f : α → Ion.InternM β)
       (init : Array β := Array.mkEmpty ((min as.size stop) - start)) : Ion.InternM (Array β) :=
   as.mapM_off f start stop init
 
-private unsafe def Array.mapM_off_intern_impl {α β} (as : Array α) (f : α → Ion.InternM β)
+unsafe def Array.mapM_off_intern_impl {α β} (as : Array α) (f : α → Ion.InternM β)
       (start : Nat := 0) (stop := as.size)
       (init : Array β := Array.mkEmpty ((min as.size stop) - start)) : Ion.InternM (Array β) :=
   fun s => go (min as.size stop) start init s
@@ -55,7 +55,6 @@ where
 
 attribute [implemented_by Array.mapM_off_intern_impl] Array.mapM_off_intern
 
-public section
 namespace Ion.Ion
 
 /--
@@ -66,9 +65,9 @@ This is added purely for security purposes to prevent a very large
 exponent in an untrusted Ion file from generating a number that
 consumes available memory.
 -/
-private def maxDecimalExponent : Nat := 1000
+def maxDecimalExponent : Nat := 1000
 
-private protected def asNat? (v : Ion SymbolId) : Option Nat :=
+protected def asNat? (v : Ion SymbolId) : Option Nat :=
   match v.app with
   | .int x =>
     if x < 0 then
@@ -86,7 +85,7 @@ private protected def asNat? (v : Ion SymbolId) : Option Nat :=
     | none => none
   | _ => none
 
-private protected def asInt? (v : Ion SymbolId) : Option Int :=
+protected def asInt? (v : Ion SymbolId) : Option Int :=
   match v.app with
   | .int x => some x
   | .decimal d =>
@@ -100,7 +99,7 @@ private protected def asInt? (v : Ion SymbolId) : Option Int :=
     | none => none
   | _ => none
 
-private protected def asDecimal? (v : Ion SymbolId) : Option Decimal :=
+protected def asDecimal? (v : Ion SymbolId) : Option Decimal :=
   match v.app with
   | .int x => some (.ofInt x)
   | .decimal d => some d
@@ -112,7 +111,7 @@ namespace StrataDDM
 
 namespace SepFormat
 
-def toIonName : SepFormat → String
+public def toIonName : SepFormat → String
   | .none => "seq"
   | .comma => "commaSepList"
   | .space => "spaceSepList"
@@ -120,7 +119,7 @@ def toIonName : SepFormat → String
   | .newline => "newlineSepList"
   | .semicolonNewline => "semicolonSepList"
 
-def fromIonName? : String → Option SepFormat
+public def fromIonName? : String → Option SepFormat
   | "seq" => some .none
   | "commaSepList" => some .comma
   | "spaceSepList" => some .space
@@ -149,11 +148,11 @@ end SepFormat
 Represents an Ion value that is either a symbol/string or a non-empty
 s-expression. The size proof ensures termination in recursive deserialization.
 -/
-private inductive StringOrSexp (v : Ion SymbolId) where
+inductive StringOrSexp (v : Ion SymbolId) where
 | string (s : String)
 | sexp (a : Array (Ion SymbolId)) (p : a.size > 0 ∧ sizeOf a < sizeOf v)
 
-private inductive Required where
+inductive Required where
 | req
 | opt
 deriving DecidableEq
@@ -163,22 +162,22 @@ Maps struct field names to their position indices, tracking which fields are
 required. Used during Ion deserialization to validate that all required fields
 are present.
 -/
-private structure StructArgMap (size : Nat) where
+structure StructArgMap (size : Nat) where
   map : Std.HashMap String (Fin size) := {}
   required : Array (String × Fin size)
   deriving Inhabited
 
 namespace StructArgMap
 
-private instance : Membership String (StructArgMap size) where
+instance : Membership String (StructArgMap size) where
   mem m nm := nm ∈ m.map
 
-private instance : GetElem? (StructArgMap size) String (Fin size) (fun m nm => nm ∈ m) where
+instance : GetElem? (StructArgMap size) String (Fin size) (fun m nm => nm ∈ m) where
   getElem m nm p := m.map[nm]
   getElem! m nm := m.map[nm]!
   getElem? m nm := m.map[nm]?
 
-private def fromList! (as : List String) : StructArgMap as.length :=
+def fromList! (as : List String) : StructArgMap as.length :=
   let size := as.length
   let m := { map := {}, required := #[] }
   as.foldl (init := m) fun m name =>
@@ -192,7 +191,7 @@ private def fromList! (as : List String) : StructArgMap as.length :=
     else
       panic! "Invalid index"
 
-private def fromOptList! (as : List (String × Required)) : StructArgMap as.length :=
+def fromOptList! (as : List (String × Required)) : StructArgMap as.length :=
   let size := as.length
   let m := { map := {}, required := #[] }
   as.foldl (init := m) fun m (name, r) =>
@@ -211,62 +210,62 @@ private def fromOptList! (as : List (String × Required)) : StructArgMap as.leng
 
 end StructArgMap
 
-structure FromIonContext where
+public structure FromIonContext where
   symbols : Ion.SymbolTable
 
-@[expose] def FromIonM := ReaderT FromIonContext (Except String)
+@[expose] public def FromIonM := ReaderT FromIonContext (Except String)
 deriving Monad
 
 namespace FromIonM
 
-private instance : MonadExcept String FromIonM :=
+instance : MonadExcept String FromIonM :=
   inferInstanceAs (MonadExcept _ (ReaderT _ _))
 
-private instance : MonadReader FromIonContext FromIonM :=
+instance : MonadReader FromIonContext FromIonM :=
   inferInstanceAs (MonadReader _ (ReaderT _ _))
 
-private def readSymbolTable : FromIonM Ion.SymbolTable :=
+def readSymbolTable : FromIonM Ion.SymbolTable :=
   return (← read).symbols
 
-private protected def lookupSymbol (sym : SymbolId) : FromIonM String := do
+protected def lookupSymbol (sym : SymbolId) : FromIonM String := do
   let some fullname := (←readSymbolTable)[sym]?
     | throw s!"Could not find symbol {sym.value}"
   pure fullname
 
-private protected def asNat (name : String) (v : Ion SymbolId) : FromIonM Nat :=
+protected def asNat (name : String) (v : Ion SymbolId) : FromIonM Nat :=
   match v.asNat? with
   | some x => pure x
   | none => throw s!"Expected {name} to be a nat instead of {repr v}."
 
-private protected def asInt (v : Ion SymbolId) : FromIonM Int :=
+protected def asInt (v : Ion SymbolId) : FromIonM Int :=
   match v.asInt? with
   | some x => pure x
   | none => throw s!"Expected {repr v} to be an int."
 
-private protected def asString (name : String) (v : Ion SymbolId) : FromIonM String :=
+protected def asString (name : String) (v : Ion SymbolId) : FromIonM String :=
   match v.app with
   | .string s => return s
   | _ => throw s!"{name} expected to be a string. {repr v}"
 
-private protected def asBytes (name : String) (v : Ion SymbolId) : FromIonM ByteArray :=
+protected def asBytes (name : String) (v : Ion SymbolId) : FromIonM ByteArray :=
   match v.app with
   | .blob a => return a
   | .list a => ByteArray.ofNatArray <$> a.mapM (.asNat "name element")
   | _ => throw s!"{name} expected to be a string. {repr v}"
 
-private protected def asSymbolString (name : String) (v : Ion SymbolId) : FromIonM String :=
+protected def asSymbolString (name : String) (v : Ion SymbolId) : FromIonM String :=
   match v.app with
   | .symbol sym => .lookupSymbol sym
   | .string name => pure name
   | _ => throw s!"{name} expected to be a symbol or string."
 
-private protected def asList (v : Ion SymbolId) : FromIonM { a : Array (Ion SymbolId) // sizeOf a < sizeOf v} :=
+protected def asList (v : Ion SymbolId) : FromIonM { a : Array (Ion SymbolId) // sizeOf a < sizeOf v} :=
   match v with
   | .mk (.list args) =>
     return .mk args (by simp; omega)
   | _ => throw s!"Expected list"
 
-private protected def asSexp (name : String) (v : Ion SymbolId) : FromIonM ({ a : Array (Ion SymbolId) // a.size > 0 ∧ sizeOf a < sizeOf v}) :=
+protected def asSexp (name : String) (v : Ion SymbolId) : FromIonM ({ a : Array (Ion SymbolId) // a.size > 0 ∧ sizeOf a < sizeOf v}) :=
   match v with
   | .mk (.sexp args) | .mk (.list args) =>
     if p : args.size > 0 then
@@ -275,7 +274,7 @@ private protected def asSexp (name : String) (v : Ion SymbolId) : FromIonM ({ a 
       throw s!"{name} expected non-empty expression"
   | _ => throw s!"{name} expected sexpression."
 
-private protected def asSymbolOrSexp (v : Ion SymbolId) : FromIonM (StringOrSexp v) :=
+protected def asSymbolOrSexp (v : Ion SymbolId) : FromIonM (StringOrSexp v) :=
   match v with
   | .mk (.symbol s) => .string <$> .lookupSymbol s
   | .mk (.string s) => return .string s
@@ -286,13 +285,13 @@ private protected def asSymbolOrSexp (v : Ion SymbolId) : FromIonM (StringOrSexp
       throw s!"Expected non-empty expression"
   | _ => throw s!"Expected symbol or sexpression."
 
-private def checkArgCount (name : String) (args : Array (Ion SymbolId)) (n : Nat) : FromIonM (PLift (args.size = n)) := do
+def checkArgCount (name : String) (args : Array (Ion SymbolId)) (n : Nat) : FromIonM (PLift (args.size = n)) := do
     if p : args.size = n then
       pure ⟨p⟩
     else
       throw s!"{name} expects {n} arguments has {repr args}"
 
-private def checkArgMin (name : String) (args : Array (Ion SymbolId)) (n : Nat) : FromIonM (PLift (args.size ≥ n)) := do
+def checkArgMin (name : String) (args : Array (Ion SymbolId)) (n : Nat) : FromIonM (PLift (args.size ≥ n)) := do
     if p : args.size ≥ n then
       pure ⟨p⟩
     else
@@ -301,22 +300,22 @@ private def checkArgMin (name : String) (args : Array (Ion SymbolId)) (n : Nat) 
 /--
 Interpret Ion value as an array and applies function to it.
 -/
-private def asListOf {α} (name : String) (v : Ion SymbolId) (f : Ion SymbolId → FromIonM α) : FromIonM (Array α) :=
+def asListOf {α} (name : String) (v : Ion SymbolId) (f : Ion SymbolId → FromIonM α) : FromIonM (Array α) :=
   match v with
   | .mk (.list a) => a.mapM f
   | _ => throw s!"{name} expects a list."
 
-private def asStruct (type : String) (v : Ion SymbolId) : FromIonM { a : Array (SymbolId × Ion SymbolId) // sizeOf a < sizeOf v } := do
+def asStruct (type : String) (v : Ion SymbolId) : FromIonM { a : Array (SymbolId × Ion SymbolId) // sizeOf a < sizeOf v } := do
   match v with
   | .mk (.struct args) => pure ⟨args, by decreasing_tactic ⟩
   | v => throw s!"{type} expected a struct: {repr v}"
 
-private def asStruct0 (v : Ion SymbolId) : FromIonM (Array (SymbolId × Ion SymbolId)) := do
+def asStruct0 (v : Ion SymbolId) : FromIonM (Array (SymbolId × Ion SymbolId)) := do
   match v with
   | .mk (.struct args) => pure args
   | _ => throw "Expected a struct0"
 
-private def sizeOfListLowerBound [h : SizeOf α] (l : List α) : sizeOf l > l.length := by
+def sizeOfListLowerBound [h : SizeOf α] (l : List α) : sizeOf l > l.length := by
   match l with
   | [] =>
     simp
@@ -324,7 +323,7 @@ private def sizeOfListLowerBound [h : SizeOf α] (l : List α) : sizeOf l > l.le
     have p := sizeOfListLowerBound r
     decreasing_tactic
 
-private def sizeOfArrayLowerBound [h : SizeOf α] (a : Array α) : sizeOf a ≥ 2 + a.size := by
+def sizeOfArrayLowerBound [h : SizeOf α] (a : Array α) : sizeOf a ≥ 2 + a.size := by
   match a with
   | ⟨l⟩ =>
     have p := sizeOfListLowerBound l
@@ -335,7 +334,7 @@ Maps an array of Ion struct fields to a fixed-size vector according to the
 StructArgMap, validating that all required fields are present and no fields are
 duplicated.
 -/
-private def mapFields {size} (args : Array (SymbolId × Ion SymbolId)) (m : StructArgMap size) :
+def mapFields {size} (args : Array (SymbolId × Ion SymbolId)) (m : StructArgMap size) :
   FromIonM (Vector (Ion SymbolId) size) := do
   -- We use an assigned vector below to check
   if args.size > size then
@@ -359,11 +358,11 @@ private def mapFields {size} (args : Array (SymbolId × Ion SymbolId)) (m : Stru
         throw s!"Missing assignment to {name}."
     pure a
 
-private def asFieldStruct {size} (v : Ion SymbolId) (type : String) (m : StructArgMap size) : FromIonM (Vector (Ion SymbolId) size) := do
+def asFieldStruct {size} (v : Ion SymbolId) (type : String) (m : StructArgMap size) : FromIonM (Vector (Ion SymbolId) size) := do
   let ⟨args, _⟩ ← asStruct type v
   mapFields args m
 
-private def deserializeValue {α} (bs : ByteArray) (act : Ion SymbolId → FromIonM α) : Except String α := do
+def deserializeValue {α} (bs : ByteArray) (act : Ion SymbolId → FromIonM α) : Except String α := do
   let a ←
     match deserialize bs with
     | .error (off, msg) =>
@@ -387,44 +386,44 @@ private def deserializeValue {α} (bs : ByteArray) (act : Ion SymbolId → FromI
 
 end FromIonM
 
-class FromIon (α : Type) where
+public class FromIon (α : Type) where
   fromIon : Ion SymbolId → FromIonM α
 
 export FromIon (fromIon)
 
 namespace FromIon
 
-def deserialize {α} [FromIon α] (bs : ByteArray) : Except String α :=
+public def deserialize {α} [FromIon α] (bs : ByteArray) : Except String α :=
   FromIonM.deserializeValue bs FromIon.fromIon
 
 end FromIon
 
 namespace QualifiedIdent
 
-private protected def toIon (d : QualifiedIdent) : Ion.InternM (Ion SymbolId) := do
+protected def toIon (d : QualifiedIdent) : Ion.InternM (Ion SymbolId) := do
   .symbol <$> internSymbol d.fullName
 
-private def fromIonStringSymbol (fullname : String) : FromIonM QualifiedIdent := do
+def fromIonStringSymbol (fullname : String) : FromIonM QualifiedIdent := do
   match QualifiedIdent.ofString fullname with
   | none => throw s!"Invalid symbol {fullname}"
   | some r => pure r
 
-private def fromIonSymbol (sym : SymbolId) : FromIonM QualifiedIdent := do
+def fromIonSymbol (sym : SymbolId) : FromIonM QualifiedIdent := do
   fromIonStringSymbol (← .lookupSymbol sym)
 
-private protected def fromIon (name : String) (v : Ion SymbolId) : FromIonM QualifiedIdent :=
+protected def fromIon (name : String) (v : Ion SymbolId) : FromIonM QualifiedIdent :=
   fromIonStringSymbol =<< .asSymbolString name v
 
 end QualifiedIdent
 
-private class ToIon (α : Type) where
+class ToIon (α : Type) where
   toIon : α → InternM (Ion SymbolId)
 
-private abbrev toIon := @ToIon.toIon
+abbrev toIon := @ToIon.toIon
 
 namespace SyntaxCatF
 
-private protected def toIon {α} [ToIon α] (cat : SyntaxCatF α) : Ion.InternM (Ion SymbolId) := do
+protected def toIon {α} [ToIon α] (cat : SyntaxCatF α) : Ion.InternM (Ion SymbolId) := do
   let args := #[ ← toIon cat.ann, ← cat.name.toIon ]
   let args := args ++ (← cat.args.attach.mapM fun ⟨e, _⟩ => e.toIon)
   return .sexp args
@@ -432,7 +431,7 @@ decreasing_by
   rw [SyntaxCatF.sizeOf_spec cat]
   decreasing_tactic
 
-private protected def fromIon {α} [FromIon α] (v : Ion SymbolId) : FromIonM (SyntaxCatF α) := do
+protected def fromIon {α} [FromIon α] (v : Ion SymbolId) : FromIonM (SyntaxCatF α) := do
   let ⟨args, _⟩ ← .asSexp "Category reference" v
   let ⟨p⟩ ← .checkArgMin "Category" args 2
   let ann ← fromIon (α := α) args[0]
@@ -448,14 +447,14 @@ decreasing_by
   have p : sizeOf e < sizeOf args := by decreasing_tactic
   decreasing_tactic
 
-private instance {α} [FromIon α] : FromIon (SyntaxCatF α)  where
+instance {α} [FromIon α] : FromIon (SyntaxCatF α)  where
   fromIon := SyntaxCatF.fromIon
 
 end SyntaxCatF
 
 namespace TypeExprF
 
-private protected def toIon {α} [ToIon α] (refs : SymbolIdCache) (tpe : TypeExprF α) : InternM (Ion SymbolId) :=
+protected def toIon {α} [ToIon α] (refs : SymbolIdCache) (tpe : TypeExprF α) : InternM (Ion SymbolId) :=
   ionScope! TypeExprF refs :
     match tpe with
     | .ident ann name a => do
@@ -483,10 +482,10 @@ private protected def toIon {α} [ToIon α] (refs : SymbolIdCache) (tpe : TypeEx
       ]
   termination_by tpe
 
-private instance {α} [ToIon α] : CachedToIon (TypeExprF α) where
+instance {α} [ToIon α] : CachedToIon (TypeExprF α) where
   cachedToIon refs tp := tp.toIon refs
 
-private protected def fromIon {α} [FromIon α] (v : Ion SymbolId) : FromIonM (TypeExprF α) := do
+protected def fromIon {α} [FromIon α] (v : Ion SymbolId) : FromIonM (TypeExprF α) := do
   let ⟨args, ap⟩ ← .asSexp "TypeExpr" v
   match ← .asSymbolString "TypeExpr kind" args[0] with
   | "arrow" => do
@@ -532,14 +531,14 @@ decreasing_by
   · have p : sizeOf e < sizeOf args := by decreasing_tactic
     decreasing_tactic
 
-private instance {α} [FromIon α] : FromIon (TypeExprF α) where
+instance {α} [FromIon α] : FromIon (TypeExprF α) where
   fromIon := TypeExprF.fromIon
 
 end TypeExprF
 
 /-- Size measure for the flattened sum type used to prove
 termination of `ArgF.toIon`. -/
-private noncomputable
+noncomputable
 abbrev sizeOf_flat {α}
     (v : ArgF α ⊕ OperationF α ⊕ ExprF α) : Nat :=
   match v with
@@ -550,7 +549,7 @@ abbrev sizeOf_flat {α}
 /-- Serialize an `ArgF`, `OperationF`, or `ExprF` to Ion.
 Uses a sum type to avoid mutual recursion. -/
 @[specialize]
-private protected def ArgF.toIon {α} [ToIon α]
+protected def ArgF.toIon {α} [ToIon α]
     (refs : SymbolIdCache)
     (v : ArgF α ⊕ OperationF α ⊕ ExprF α)
     : InternM (Ion SymbolId) :=
@@ -631,14 +630,14 @@ private protected def ArgF.toIon {α} [ToIon α]
     · decreasing_tactic
 
 /-- Serialize an `OperationF` to Ion via `ArgF.toIon`. -/
-private protected def OperationF.toIon {α}
+protected def OperationF.toIon {α}
     [ToIon α] (refs : SymbolIdCache)
     (op : OperationF α)
     : InternM (Ion SymbolId) :=
   ArgF.toIon refs (.inr (.inl op))
 
 /-- Serialize an `ExprF` to Ion via `ArgF.toIon`. -/
-private protected def ExprF.toIon {α}
+protected def ExprF.toIon {α}
     [ToIon α] (refs : SymbolIdCache)
     (e : ExprF α)
     : InternM (Ion SymbolId) :=
@@ -646,7 +645,7 @@ private protected def ExprF.toIon {α}
 
 mutual
 
-private protected def OperationF.fromIon {α} [FromIon α] (v : Ion SymbolId) : FromIonM (OperationF α)  := do
+protected def OperationF.fromIon {α} [FromIon α] (v : Ion SymbolId) : FromIonM (OperationF α)  := do
   let ⟨sexp, sexpP⟩ ← .asSexp "Operation" v
   let ⟨m⟩ ← .checkArgMin "operation" sexp 2
   let name ← QualifiedIdent.fromIon "Operation name" sexp[0]
@@ -659,7 +658,7 @@ decreasing_by
     have _ : sizeOf a < sizeOf sexp := by decreasing_tactic
     decreasing_tactic
 
-private protected def ExprF.fromIon {α} [FromIon α] (v : Ion SymbolId) : FromIonM (ExprF α) := do
+protected def ExprF.fromIon {α} [FromIon α] (v : Ion SymbolId) : FromIonM (ExprF α) := do
   let ⟨sexp, sexpP⟩ ← .asSexp "Expr" v
   match ← .asSymbolString "Expr kind" sexp[0] with
   | "bvar" =>
@@ -697,7 +696,7 @@ Decode an Ion symbol name to a `SepFormat`.
 
 N.B. These strings must match the `ionSymbol!` calls in `ArgF.toIon` above.
 -/
-private protected def ArgF.fromIon {α} [FromIon α] (v : Ion SymbolId) : FromIonM (ArgF α)  := do
+protected def ArgF.fromIon {α} [FromIon α] (v : Ion SymbolId) : FromIonM (ArgF α)  := do
   let ⟨sexp, sexpP⟩ ← .asSexp "Arg" v
   let argKind ← .asSymbolString "Arg kind" sexp[0]
   match argKind with
@@ -775,14 +774,14 @@ end
 
 namespace OperationF
 
-private instance {α} [ToIon α] : CachedToIon (OperationF α)  where
+instance {α} [ToIon α] : CachedToIon (OperationF α)  where
   cachedToIon := OperationF.toIon
 
 end OperationF
 
 namespace SyntaxDefAtom
 
-private protected def toIon (refs : SymbolIdCache) (a : SyntaxDefAtom) : InternM (Ion SymbolId) :=
+protected def toIon (refs : SymbolIdCache) (a : SyntaxDefAtom) : InternM (Ion SymbolId) :=
   ionScope! SyntaxDefAtom refs :
     match a with
     | .ident idx prec =>
@@ -793,10 +792,10 @@ private protected def toIon (refs : SymbolIdCache) (a : SyntaxDefAtom) : InternM
       return .sexp <| #[.symbol ionSymbol! "indent", .int n]
           ++ (← args.attach.mapM (fun ⟨a, _⟩  => a.toIon refs))
 
-private instance : CachedToIon SyntaxDefAtom where
+instance : CachedToIon SyntaxDefAtom where
   cachedToIon := SyntaxDefAtom.toIon
 
-private protected def fromIon (v : Ion SymbolId) : FromIonM SyntaxDefAtom := do
+protected def fromIon (v : Ion SymbolId) : FromIonM SyntaxDefAtom := do
   match ← .asSymbolOrSexp v with
   | .string v =>
     return .str v
@@ -816,14 +815,14 @@ private protected def fromIon (v : Ion SymbolId) : FromIonM SyntaxDefAtom := do
     | s =>
       throw s!"Unexpected binding kind {s}"
 
-private instance : FromIon SyntaxDefAtom where
+instance : FromIon SyntaxDefAtom where
   fromIon := SyntaxDefAtom.fromIon
 
 end SyntaxDefAtom
 
 namespace SyntaxDef
 
-private instance : CachedToIon SyntaxDef where
+instance : CachedToIon SyntaxDef where
   cachedToIon refs d := ionScope! SyntaxDef refs :
     match d with
     | .std atoms prec =>
@@ -834,7 +833,7 @@ private instance : CachedToIon SyntaxDef where
     | .passthrough =>
       return .symbol ionSymbol! "passthrough"
 
-private instance : FromIon SyntaxDef where
+instance : FromIon SyntaxDef where
   fromIon v := do
     match v with
     | .symbol s =>
@@ -854,7 +853,7 @@ end SyntaxDef
 
 namespace SourceRange
 
-private instance : ToIon SourceRange where
+instance : ToIon SourceRange where
   toIon v :=
     pure <|
       if v.start = 0 ∧ v.stop = 0 then
@@ -862,7 +861,7 @@ private instance : ToIon SourceRange where
       else
         .sexp #[.int v.start.byteIdx, .int v.stop.byteIdx ]
 
-private instance : FromIon SourceRange where
+instance : FromIon SourceRange where
   fromIon v := do
     let tag := "Source range"
     match v.app with
@@ -880,13 +879,13 @@ end SourceRange
 
 namespace FunctionIterScope
 
-private instance : CachedToIon FunctionIterScope where
+instance : CachedToIon FunctionIterScope where
   cachedToIon refs v := ionScope! FunctionIterScope refs :
     return match v with
     | .perConstructor => ionSymbol! "perConstructor"
     | .perField => ionSymbol! "perField"
 
-private instance : FromIon FunctionIterScope where
+instance : FromIon FunctionIterScope where
   fromIon v := do
     match ← .asSymbolString "FunctionIterScope" v with
     | "perConstructor" => return .perConstructor
@@ -897,14 +896,14 @@ end FunctionIterScope
 
 namespace TypeRef
 
-private instance : CachedToIon TypeRef where
+instance : CachedToIon TypeRef where
   cachedToIon refs v := ionScope! TypeRef refs :
     return match v with
     | .datatype => ionSymbol! "datatype"
     | .fieldType => ionSymbol! "fieldType"
     | .builtin name => .sexp #[ionSymbol! "builtin", .string name]
 
-private instance : FromIon TypeRef where
+instance : FromIon TypeRef where
   fromIon v := do
     match ← .asSymbolOrSexp v with
     | .string s =>
@@ -922,7 +921,7 @@ end TypeRef
 
 namespace NamePatternPart
 
-private instance : CachedToIon NamePatternPart where
+instance : CachedToIon NamePatternPart where
   cachedToIon refs v := ionScope! NamePatternPart refs :
     return match v with
     | .literal s => .sexp #[ionSymbol! "literal", .string s]
@@ -930,7 +929,7 @@ private instance : CachedToIon NamePatternPart where
     | .constructor => ionSymbol! "constructor"
     | .field => ionSymbol! "field"
 
-private instance : FromIon NamePatternPart where
+instance : FromIon NamePatternPart where
   fromIon v := do
     match ← .asSymbolOrSexp v with
     | .string s =>
@@ -949,7 +948,7 @@ end NamePatternPart
 
 namespace FunctionTemplate
 
-private instance : CachedToIon FunctionTemplate where
+instance : CachedToIon FunctionTemplate where
   cachedToIon refs t := ionScope! FunctionTemplate refs : do
     let scope ← ionRef! t.scope
     let namePattern ← t.namePattern.mapM (fun (p : NamePatternPart) => ionRef! p)
@@ -963,7 +962,7 @@ private instance : CachedToIon FunctionTemplate where
       returnType
     ]
 
-private instance : FromIon FunctionTemplate where
+instance : FromIon FunctionTemplate where
   fromIon v := do
     let ⟨args, _⟩ ← .asSexp "FunctionTemplate" v
     let ⟨p⟩ ← .checkArgCount "FunctionTemplate" args 5
@@ -981,7 +980,7 @@ end FunctionTemplate
 
 namespace MetadataArg
 
-private protected def toIon (refs : SymbolIdCache) (a : MetadataArg) : InternM (Ion SymbolId) :=
+protected def toIon (refs : SymbolIdCache) (a : MetadataArg) : InternM (Ion SymbolId) :=
   ionScope! MetadataArg refs :
     match a with
     | .bool b =>
@@ -997,10 +996,10 @@ private protected def toIon (refs : SymbolIdCache) (a : MetadataArg) : InternM (
     | .functionTemplate t =>
       return .sexp #[ionSymbol! "functionTemplate", ← ionRef! t]
 
-private instance : CachedToIon MetadataArg where
+instance : CachedToIon MetadataArg where
   cachedToIon := MetadataArg.toIon
 
-private protected def fromIon (v : Ion SymbolId) : FromIonM MetadataArg := do
+protected def fromIon (v : Ion SymbolId) : FromIonM MetadataArg := do
   if let .mk (.null _) := v then
     return .option none
   if let .mk (.bool b) := v then
@@ -1021,21 +1020,21 @@ private protected def fromIon (v : Ion SymbolId) : FromIonM MetadataArg := do
     .functionTemplate <$> fromIon args[1]
   | s => throw s!"Unexpected arg {s}"
 
-private instance : FromIon MetadataArg where
+instance : FromIon MetadataArg where
   fromIon := MetadataArg.fromIon
 
 end MetadataArg
 
 namespace MetadataAttr
 
-private instance : CachedToIon MetadataAttr where
+instance : CachedToIon MetadataAttr where
   cachedToIon refs md := ionScope! MetadataAttr refs : do
     let args : Array (Ion SymbolId) := .mkEmpty (1 + md.args.size)
     let args := args.push (←md.ident.toIon)
     let args ← md.args.mapM_off (init := args) fun a => ionRef! a
     return .sexp args
 
-private instance : FromIon MetadataAttr where
+instance : FromIon MetadataAttr where
   fromIon v := do
     let ⟨args, argsp⟩ ← .asSexp "Metadata attribute" v
     return {
@@ -1047,17 +1046,17 @@ end MetadataAttr
 
 namespace Metadata
 
-private instance : CachedToIon Metadata where
+instance : CachedToIon Metadata where
   cachedToIon refs md := ionScope! Metadata refs : ionRef! md.toArray
 
-private instance : FromIon Metadata where
+instance : FromIon Metadata where
   fromIon v := .ofArray <$> .asListOf "Metadata attributes" v fromIon
 
 end Metadata
 
 namespace PreType
 
-private protected def toIon (refs : SymbolIdCache) (tpe : PreType) : InternM (Ion SymbolId) :=
+protected def toIon (refs : SymbolIdCache) (tpe : PreType) : InternM (Ion SymbolId) :=
   ionScope! PreType refs :
     match tpe with
     | .ident loc name a => do
@@ -1075,10 +1074,10 @@ private protected def toIon (refs : SymbolIdCache) (tpe : PreType) : InternM (Io
       return Ion.sexp <| #[ionSymbol! "funMacro", ← toIon loc, .int i, ← r.toIon refs]
   termination_by tpe
 
-private instance : CachedToIon PreType where
+instance : CachedToIon PreType where
   cachedToIon refs tp := tp.toIon refs
 
-private protected def fromIon (v : Ion SymbolId) : FromIonM PreType := do
+protected def fromIon (v : Ion SymbolId) : FromIonM PreType := do
   let ⟨args, ap⟩ ← .asSexp "PreType" v
   match ← .asSymbolString "PreType kind" args[0] with
   | "arrow" => do
@@ -1123,14 +1122,14 @@ termination_by v
     · have p : sizeOf args[3] < sizeOf args := by decreasing_tactic
       decreasing_tactic
 
-private instance : FromIon PreType where
+instance : FromIon PreType where
   fromIon := PreType.fromIon
 
 end PreType
 
 namespace ArgDeclKind
 
-private instance : CachedToIon ArgDeclKind where
+instance : CachedToIon ArgDeclKind where
   cachedToIon refs tpc := ionScope! ArgDeclKind refs :
   match tpc with
   | .cat k =>
@@ -1138,7 +1137,7 @@ private instance : CachedToIon ArgDeclKind where
   | .type tp =>
     return .sexp #[ionSymbol! "type", ← ionRef! tp]
 
-private protected def fromIon (v : Ion SymbolId) : FromIonM ArgDeclKind := do
+protected def fromIon (v : Ion SymbolId) : FromIonM ArgDeclKind := do
   let ⟨args, argsp⟩ ← .asSexp "ArgDeclKind" v
   match ← .asSymbolString "ArgDeclKind kind" args[0] with
   | "category" => do
@@ -1150,14 +1149,14 @@ private protected def fromIon (v : Ion SymbolId) : FromIonM ArgDeclKind := do
   | s =>
     throw s!"Unexpected binding kind {s}"
 
-private instance : FromIon ArgDeclKind where
+instance : FromIon ArgDeclKind where
   fromIon := ArgDeclKind.fromIon
 
 end ArgDeclKind
 
 namespace ArgDecl
 
-private instance : CachedToIon ArgDecl where
+instance : CachedToIon ArgDecl where
   cachedToIon refs b := ionScope! ArgDecl refs : do
     let mut flds := #[
       (ionSymbol! "name", .string b.ident),
@@ -1167,7 +1166,7 @@ private instance : CachedToIon ArgDecl where
       flds := flds.push (ionSymbol! "metadata", ← ionRef! b.metadata)
     return .struct flds
 
-private instance : FromIon ArgDecl where
+instance : FromIon ArgDecl where
   fromIon v := do
     let m := .fromOptList! [("name", .req), ("type", .req), ("metadata", .opt)]
     let ⟨fldArgs, p⟩ ← .asFieldStruct (size := 3) v "ArgDecl" m
@@ -1186,7 +1185,7 @@ end ArgDecl
 
 namespace MetadataArgType
 
-private protected def toIon (refs : SymbolIdCache) (tp : MetadataArgType) : Ion SymbolId :=
+protected def toIon (refs : SymbolIdCache) (tp : MetadataArgType) : Ion SymbolId :=
   ionScope! MetadataArgType refs :
     match tp with
     | .bool => ionSymbol! "bool"
@@ -1195,10 +1194,10 @@ private protected def toIon (refs : SymbolIdCache) (tp : MetadataArgType) : Ion 
     | .opt tp => .sexp #[ ionSymbol! "opt", tp.toIon refs]
     | .functionTemplate => ionSymbol! "functionTemplate"
 
-private instance : CachedToIon MetadataArgType where
+instance : CachedToIon MetadataArgType where
   cachedToIon refs tp := return tp.toIon refs
 
-private protected def fromIon (v : Ion SymbolId) : FromIonM MetadataArgType := do
+protected def fromIon (v : Ion SymbolId) : FromIonM MetadataArgType := do
   match ← .asSymbolOrSexp v with
   | .string s =>
     match s with
@@ -1217,18 +1216,18 @@ private protected def fromIon (v : Ion SymbolId) : FromIonM MetadataArgType := d
     | s => throw s!"Unknown sexp arg {s}"
   termination_by v
 
-private instance : FromIon MetadataArgType where
+instance : FromIon MetadataArgType where
   fromIon := MetadataArgType.fromIon
 
 end MetadataArgType
 
 namespace MetadataArgDecl
 
-private instance : CachedToIon MetadataArgDecl where
+instance : CachedToIon MetadataArgDecl where
   cachedToIon refs d := ionScope! MetadataArgDecl refs :
     return .sexp #[.string d.ident, ← ionRef! d.type ]
 
-private instance : FromIon MetadataArgDecl where
+instance : FromIon MetadataArgDecl where
   fromIon v := do
     let ⟨args, argsp⟩ ← .asSexp "MetadataArgDecl" v
     let ⟨p⟩ ← .checkArgCount "MetadataArgDecl" args 2
@@ -1241,7 +1240,7 @@ end MetadataArgDecl
 
 namespace SynCatDecl
 
-private instance : CachedToIon SynCatDecl where
+instance : CachedToIon SynCatDecl where
   cachedToIon refs d := ionScope! SynCatDecl refs :
     return .struct #[
       (ionSymbol! "type", ionSymbol! "syncat"),
@@ -1249,7 +1248,7 @@ private instance : CachedToIon SynCatDecl where
       (ionSymbol! "args", .list (.string <$> d.argNames))
     ]
 
-private protected def fromIon (fields : Array (SymbolId × Ion SymbolId)) : FromIonM SynCatDecl := do
+protected def fromIon (fields : Array (SymbolId × Ion SymbolId)) : FromIonM SynCatDecl := do
   let m := .fromOptList! [("type", .req), ("name", .req), ("args", .opt)]
   let fldArgs ← .mapFields fields m
   let name ← .asString "Category name" fldArgs[1]
@@ -1263,7 +1262,7 @@ end SynCatDecl
 
 namespace OpDecl
 
-private instance : CachedToIon OpDecl where
+instance : CachedToIon OpDecl where
   cachedToIon refs d := ionScope! OpDecl refs : do
     let mut flds : Array (SymbolId × Ion SymbolId) := #[
       (ionSymbol! "type", ionSymbol! "op"),
@@ -1278,7 +1277,7 @@ private instance : CachedToIon OpDecl where
       flds := flds.push (ionSymbol! "metadata", ← ionRef! d.metadata)
     return .struct flds
 
-private protected def fromIon (fields : Array (SymbolId × Ion SymbolId)) : FromIonM OpDecl := do
+protected def fromIon (fields : Array (SymbolId × Ion SymbolId)) : FromIonM OpDecl := do
   let m := .fromOptList! [
       ("type", .req),
       ("name", .req),
@@ -1314,7 +1313,7 @@ end OpDecl
 
 namespace TypeDecl
 
-private instance : CachedToIon TypeDecl where
+instance : CachedToIon TypeDecl where
   cachedToIon refs d := ionScope! TypeDecl refs : do
     let args ← d.argNames |>.mapM fun a =>
       return .sexp #[← toIon a.ann, .string a.val]
@@ -1324,7 +1323,7 @@ private instance : CachedToIon TypeDecl where
       (ionSymbol! "argNames", .list args)
     ]
 
-private protected def fromIon (fields : Array (SymbolId × Ion SymbolId)) : FromIonM TypeDecl := do
+protected def fromIon (fields : Array (SymbolId × Ion SymbolId)) : FromIonM TypeDecl := do
   let m := .fromList! ["type", "name", "argNames"]
   let args ← .mapFields fields m
   let resolveArg v := do
@@ -1343,7 +1342,7 @@ end TypeDecl
 
 namespace FunctionDecl
 
-private instance : CachedToIon FunctionDecl where
+instance : CachedToIon FunctionDecl where
   cachedToIon refs d := ionScope! FunctionDecl refs : do
     let mut flds : Array (SymbolId × Ion SymbolId) := #[
       (ionSymbol! "type", .symbol ionSymbol! "fn"),
@@ -1357,7 +1356,7 @@ private instance : CachedToIon FunctionDecl where
     flds := flds.push (ionSymbol! "metadata", ← ionRef! d.metadata)
     return .struct flds
 
-private protected def fromIon (fields : Array (SymbolId × Ion SymbolId)) : FromIonM FunctionDecl := do
+protected def fromIon (fields : Array (SymbolId × Ion SymbolId)) : FromIonM FunctionDecl := do
   let m := .fromOptList! [
       ("type", .req),
       ("name", .req),
@@ -1394,7 +1393,7 @@ end FunctionDecl
 
 namespace MetadataDecl
 
-private instance : CachedToIon MetadataDecl where
+instance : CachedToIon MetadataDecl where
   cachedToIon refs d := ionScope! MetadataDecl refs :
     return .struct #[
       (ionSymbol! "type", ionSymbol! "metadata"),
@@ -1402,7 +1401,7 @@ private instance : CachedToIon MetadataDecl where
       (ionSymbol! "args", ← ionRef! d.args)
     ]
 
-private protected def fromIon (fields : Array (SymbolId × Ion SymbolId)) : FromIonM MetadataDecl := do
+protected def fromIon (fields : Array (SymbolId × Ion SymbolId)) : FromIonM MetadataDecl := do
   let m := .fromList! ["type", "name", "args"]
   let args ← .mapFields fields m
   pure {
@@ -1414,7 +1413,7 @@ end MetadataDecl
 
 namespace Decl
 
-private instance : CachedToIon Decl where
+instance : CachedToIon Decl where
   cachedToIon refs d := ionScope! Decl refs :
   match d with
   | .syncat d   => ionRef! d
@@ -1423,7 +1422,7 @@ private instance : CachedToIon Decl where
   | .function d => ionRef! d
   | .metadata d => ionRef! d
 
-private def fromIonFields (typeVal : String) (fields : Array (SymbolId × Ion SymbolId)) : FromIonM Decl := do
+def fromIonFields (typeVal : String) (fields : Array (SymbolId × Ion SymbolId)) : FromIonM Decl := do
   match typeVal with
   | "syncat" => .syncat <$> SynCatDecl.fromIon fields
   | "op" => .op <$> OpDecl.fromIon fields
@@ -1432,7 +1431,7 @@ private def fromIonFields (typeVal : String) (fields : Array (SymbolId × Ion Sy
   | "metadata" => .metadata <$> MetadataDecl.fromIon fields
   | typeVal => throw s!"Unknown type {typeVal}"
 
-private def fromIon (typeId : SymbolId) (v : Ion SymbolId) : FromIonM Decl := do
+def fromIon (typeId : SymbolId) (v : Ion SymbolId) : FromIonM Decl := do
   let fields ← .asStruct0 v
   let some (_, val) := fields.find? (·.fst == typeId)
     | throw "Could not find type"
@@ -1445,18 +1444,18 @@ namespace Ion
 /--
 This contains information from a partially parsed Ion File.
 -/
-structure Fragment where
+public structure Fragment where
   symbols : Ion.SymbolTable
   values : Array (Ion.Ion Ion.SymbolId)
   offset : Nat
 
-inductive Header
+public inductive Header
 | dialect : DialectName → Header
 | program : DialectName → Header
 
 namespace Header
 
-private def fromIon (v : Ion SymbolId) : FromIonM Header := do
+def fromIon (v : Ion SymbolId) : FromIonM Header := do
   let ⟨hdr, _⟩ ← .asSexp "Header" v
   let .isTrue ne := decideProp (hdr.size ≥ 2)
     | throw s!"Expected header to have two elements."
@@ -1465,7 +1464,7 @@ private def fromIon (v : Ion SymbolId) : FromIonM Header := do
   | "program" => .program <$> .asString "Program name" hdr[1]
   | op => throw s!"Expected 'program' or 'dialect' instead of {op}."
 
-def parse (bytes : ByteArray) : Except String (Header × Fragment) := do
+public def parse (bytes : ByteArray) : Except String (Header × Fragment) := do
   FromIonM.deserializeValue bytes $ fun v => do
     let tbl := (← read).symbols
     let ⟨args, _⟩ ← .asList v
@@ -1479,7 +1478,7 @@ end Ion
 
 namespace Dialect
 
-private instance : CachedToIon Dialect where
+instance : CachedToIon Dialect where
   cachedToIon refs d := ionScope! Dialect refs : do
     let c := ionSymbol! "dialect"
     let hdr := .sexp #[ c, .string d.name ]
@@ -1495,7 +1494,7 @@ private instance : CachedToIon Dialect where
       a := a.push <| (← ionRef! decl)
     return .list a
 
-def fromIonFragment (dialect : DialectName) (f : Ion.Fragment) : Except String Dialect := do
+public def fromIonFragment (dialect : DialectName) (f : Ion.Fragment) : Except String Dialect := do
   let ctx : FromIonContext := ⟨f.symbols⟩
   let tbl := f.symbols
   let typeId := tbl.symbolId "type"
@@ -1542,7 +1541,7 @@ def fromIonFragment (dialect : DialectName) (f : Ion.Fragment) : Except String D
     typecheck := typecheck
   }
 
-private instance : FromIon Dialect where
+instance : FromIon Dialect where
   fromIon v := do
     let ⟨args, _⟩ ← .asList v
     let .isTrue ne := decideProp (args.size ≥ 1)
@@ -1554,18 +1553,20 @@ private instance : FromIon Dialect where
     | .program _ =>
       throw s!"Expected dialect"
 
+public section
 #declareIonSymbolTable Dialect
+end
 
 end Dialect
 
-structure StrataFile where
+public structure StrataFile where
   filePath : String
   program : Program
   deriving Inhabited
 
 namespace Program
 
-private instance : CachedToIon Program where
+instance : CachedToIon Program where
   cachedToIon refs pgm :=
     ionScope! Program refs : do
       let hdr := Ion.sexp #[ ionSymbol! "program", .string pgm.dialect ]
@@ -1573,14 +1574,16 @@ private instance : CachedToIon Program where
         fun cmd => cmd.toIon (ionRefEntry! ``ArgF)
       return .list l
 
+public section
 #declareIonSymbolTable Program
+end
 
-def fromIonFragmentCommands (f : Ion.Fragment) : Except String (Array Operation) := do
+public def fromIonFragmentCommands (f : Ion.Fragment) : Except String (Array Operation) := do
   let ctx : FromIonContext := ⟨f.symbols⟩
   f.values.foldlM (init := #[]) (start := f.offset) fun cmds u => do
     cmds.push <$> OperationF.fromIon u ctx
 
-def fromIonFragment (f : Ion.Fragment)
+public def fromIonFragment (f : Ion.Fragment)
       (dialects : DialectMap)
       (dialect : DialectName) : Except String Program := do
   let commands ← fromIonFragmentCommands f
@@ -1589,7 +1592,7 @@ def fromIonFragment (f : Ion.Fragment)
 /--
 Decodes bytes in the Ion format into a single Strata program.
 -/
-def fromIon (dialects : DialectMap) (dialect : DialectName) (bytes : ByteArray) : Except String Program := do
+public def fromIon (dialects : DialectMap) (dialect : DialectName) (bytes : ByteArray) : Except String Program := do
   let (hdr, frag) ←
     match Ion.Header.parse bytes with
     | .error msg =>
@@ -1604,7 +1607,7 @@ def fromIon (dialects : DialectMap) (dialect : DialectName) (bytes : ByteArray) 
       throw s!"{name} program found when {dialect} expected."
     fromIonFragment frag dialects dialect
 
-def filesFromIon (dialects : DialectMap) (bytes : ByteArray) : Except String (List StrataFile) := do
+public def filesFromIon (dialects : DialectMap) (bytes : ByteArray) : Except String (List StrataFile) := do
   let ctx ←
     match Ion.deserialize bytes with
     | .error (off, msg) => throw s!"Error reading Ion: {msg} (offset = {off})"

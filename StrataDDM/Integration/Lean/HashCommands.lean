@@ -7,6 +7,7 @@ module
 
 import Lean.Elab.Command
 public meta import StrataDDM.Elab
+public import StrataDDM.SourcedProgram
 public meta import StrataDDM.Integration.Lean.Env
 public meta import StrataDDM.Integration.Lean.ToExpr
 public meta import StrataDDM.TaggedRegions
@@ -29,57 +30,6 @@ public class HasInputContext (m : Type → Type _) [Functor m] where
   getInputContext : m InputContext
   getFileName : m FilePath :=
     (fun ctx => FilePath.mk ctx.fileName) <$> getInputContext
-
-/--
-Bundle returned by the `#strata` term region. Carries:
-
-- `program`: the parsed `Strata.Program` with **file-global** AST byte offsets,
-  so Boole-style consumers (and any code that uses byte offsets in obligation
-  labels or diagnostic ranges) keep their existing behavior.
-- `source`: the raw snippet text between `#strata` and `#end`. Test helpers
-  use this to build a snippet-local `FileMap`.
-- `basePos`: byte offset in the Lean file where the snippet starts, so
-  helpers can convert file-global pipeline diagnostics back to snippet-local
-  positions when matching against inline annotations.
-- `baseLine` / `fileName`: enough info for helpers to render
-  `<lean_file>:<line>:<col>` in error messages so editors / quickfix lists
-  can jump straight to the offending source.
--/
-public structure SourcedProgram where
-  program  : Program
-  source   : String
-  basePos  : Nat
-  baseLine : Nat
-  fileName : String
-  deriving Inhabited
-
-/-- Forward `ToString` to the underlying `Program` so `#eval` printing keeps
-    working at existing call sites. -/
-public instance : ToString SourcedProgram where
-  toString s := toString s.program
-
-/-- Allow `SourcedProgram` to be used wherever a `Program` is expected; the
-    source/positions are dropped. Removes ~200 explicit `.program` accessors
-    at consumer call sites. -/
-public instance : Coe SourcedProgram Program where
-  coe s := s.program
-
--- Forwarders so existing call sites can keep using `.commands`, `.dialect`,
--- etc. on the result of `#strata` as if it were a `Program`.
-namespace SourcedProgram
-
-public abbrev commands (s : SourcedProgram) : Array Operation :=
-  s.program.commands
-public abbrev dialect (s : SourcedProgram) : DialectName :=
-  s.program.dialect
-public abbrev dialects (s : SourcedProgram) : DialectMap :=
-  s.program.dialects
-public abbrev globalContext (s : SourcedProgram) : GlobalContext :=
-  s.program.globalContext
-public abbrev format (s : SourcedProgram) (opts : FormatOptions := {}) : Std.Format :=
-  s.program.format opts
-
-end SourcedProgram
 
 meta section
 
@@ -137,8 +87,9 @@ public def addDefn (name : Lean.Name)
             (levelParams : List Name := [])
             (hints : ReducibilityHints := .abbrev)
             (safety : DefinitionSafety := .safe)
-            (all : List Lean.Name := [name]) : CoreM Unit := do
-  addAndCompile <| .defnDecl {
+            (all : List Lean.Name := [name])
+            (isMeta : Bool := false) : CoreM Unit := do
+  addAndCompile (markMeta := isMeta) <| .defnDecl {
     name := name
     levelParams := levelParams
     type := type
@@ -156,15 +107,25 @@ Declare dialect and add to environment.
 def declareDialect (d : Dialect) : CommandElabM Unit := do
   -- Identifier for dialect
   let dialectName := Name.anonymous |>.str d.name
-  let dialectAbsName ← mkScopedName dialectName
+  let scope := (← get).scopes.head!
+  let env ← getEnv
+  -- A file not using the module system has no `public section`, so treat it as
+  -- public; `Gen.lean`'s `resolveScopedName` does the same.
+  let isPublic := !env.header.isModule || scope.isPublic
+  let isMeta := scope.isMeta
+
+  let mut dialectAbsName ← mkScopedName dialectName
   -- Identifier for dialect map
-  let mapAbsName ← mkScopedName (Name.anonymous |>.str s!"{d.name}_map")
+  let mut mapAbsName ← mkScopedName (Name.anonymous |>.str s!"{d.name}_map")
+  if isPublic = false then
+    dialectAbsName := mkPrivateName env dialectAbsName
+    mapAbsName := mkPrivateName env mapAbsName
 
   let dialectTypeExpr := mkConst ``Dialect
-  liftCoreM <| addDefn dialectAbsName dialectTypeExpr (toExpr d)
+  liftCoreM <| addDefn dialectAbsName dialectTypeExpr (toExpr d) (isMeta := isMeta)
   -- Add dialect to environment
   modifyEnv fun env =>
-    dialectExt.modifyState env (·.addDialect! d dialectAbsName (isNew := true))
+    dialectExt.modifyState env (·.addDialect! d dialectAbsName (isExported := isPublic))
   -- Create term to represent minimal DialectMap with dialect.
   let s := (dialectExt.getState (←Lean.getEnv))
   let .isTrue mem := (inferInstance : Decidable (d.name ∈ s.loaded.dialects))
@@ -177,7 +138,7 @@ def declareDialect (d : Dialect) : CommandElabM Unit := do
   let de ← openDialects.mapM exprD
   let mapValue := mkApp (mkConst ``DialectMap.ofList!)
                         (listToExpr .zero dialectTypeExpr de)
-  liftCoreM <| addDefn mapAbsName (mkConst ``DialectMap) mapValue
+  liftCoreM <| addDefn mapAbsName (mkConst ``DialectMap) mapValue (isMeta := isMeta)
 
 declare_tagged_region command strataDialectCommand "#dialect" "#end"
 
@@ -224,9 +185,32 @@ meta def strataProgramImpl : TermElab := fun stx tp => do
     let some (.str name root) := s.nameMap[pgm.dialect]?
       | throwError s!"Unknown dialect {pgm.dialect}"
     let commandType := mkConst ``Operation
+    -- Decide whether the generated `command✝` definitions should be `meta`, so a
+    -- `meta` consumer can reference them (and, symmetrically, a non-`meta` consumer
+    -- keeps them regular). We are in a `meta` context when any of:
+    --   * we are inside a `meta section`;
+    --   * the enclosing declaration is already tagged `meta` (e.g. a user `meta def`);
+    --   * the enclosing declaration is the `_eval` aux def that `#eval`/`#guard_msgs`
+    --     synthesize. `#eval` declares it with `computeKind := .meta` but elaborates
+    --     it under `withoutModifyingEnv`, so the `meta` tag is not visible on our
+    --     environment branch while this `#strata` body is elaborated. Its name is a
+    --     fixed `_eval` literal placed directly on the private prefix
+    --     (`_private.<module>.0._eval`, see Lean's `BuiltinEvalCommand`); match that
+    --     shape precisely so we don't also treat a user's own `_eval` declaration as
+    --     an eval aux def.
+    let declName? := (← read).declName?
+    let enclosingIsEval := declName?.any fun
+      | .str p "_eval" => Lean.isPrivatePrefix p
+      | _ => false
+    let isMeta := (← read).isMetaSection ||
+      declName?.any (Lean.isMarkedMeta (← getEnv)) ||
+      enclosingIsEval
     let cmdToExpr (cmd : Operation) : CoreM Lean.Expr := do
-          let n ← mkFreshUserName `command
-          addDefn n commandType (toExpr cmd)
+          -- Private, hygienic name: these are internal aux defs, never public API.
+          -- Being private also avoids the stricter "public `meta` def" visibility rule,
+          -- which would otherwise force every referenced AST decl to be `public meta`.
+          let n := mkPrivateName (← getEnv) (← mkFreshUserName `command)
+          addDefn n commandType (toExpr cmd) (isMeta := isMeta)
           pure <| mkConst n
     let commandExprs ← monadLift <| pgm.commands.mapM cmdToExpr
     let pgmExpr : Lean.Expr :=

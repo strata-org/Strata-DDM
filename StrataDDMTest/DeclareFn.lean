@@ -5,10 +5,9 @@
 -/
 module
 
-public import StrataDDM.Integration.Lean
+meta import StrataDDM.Integration.Lean
 
-public section
-
+meta section
 -- Declare dialect for testing declareFn
 #dialect
 dialect TestDeclareFn;
@@ -110,5 +109,3 @@ check a : F Int;
 -/
 #guard_msgs in
 #eval IO.println testDeclareTypePgm
-
-end

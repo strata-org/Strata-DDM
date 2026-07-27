@@ -11,13 +11,11 @@ extension to create high performance Ion serialization and deserialization.
 module
 
 public import StrataDDM.Util.Ion
-
 public meta import StrataDDM.Util.Ion.Env
 public meta import StrataDDM.Util.Ion.SymbolTable
 public meta import Lean.Meta.Eval
 public meta import Lean.Elab.Command
 import Lean.Util.Trace
-import StrataDDM.Util.Ion.Env
 
 open Lean
 open Lean.Elab
@@ -271,7 +269,7 @@ private meta def mkIdent (si : SourceInfo) (n : Name) : TSyntax `ident := ⟨.id
 syntax (name := declareIonSymbolTable) "#declareIonSymbolTable" ident : command -- declare the syntax
 
 @[command_elab declareIonSymbolTable]
-public meta def declareIonSymbolTableImpl : Command.CommandElab := fun stx =>
+meta def declareIonSymbolTableImpl : Command.CommandElab := fun stx =>
   match stx with
   | `(#declareIonSymbolTable $tp) => do
     let name ← resolveGlobalDecl tp

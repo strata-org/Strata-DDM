@@ -5,11 +5,11 @@
 -/
 module
 
-import StrataDDMTest.Elab
-meta import StrataDDM.Elab
-meta import StrataDDM.BuiltinDialects
+meta import StrataDDMTest.Elab
+
 -- This tests that we can import a module and see dialects declared there.
 
+meta section
 /--
 error: Unknown dialect FailTest.
 -/

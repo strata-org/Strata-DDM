@@ -5,7 +5,7 @@
 -/
 module
 
-import StrataDDM.Integration.Lean
+meta import StrataDDM.Integration.Lean
 
 /-!
 # Tests for @[declareTVar] annotation
@@ -14,6 +14,7 @@ Tests that type variables declared via `@[declareTVar]` are properly
 brought into scope via `@[scope]`.
 -/
 
+meta section
 #dialect
 dialect TestDeclareTVar;
 

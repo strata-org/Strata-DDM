@@ -5,7 +5,7 @@
 -/
 module
 
-import StrataDDM.Integration.Lean
+meta import StrataDDM.Integration.Lean
 
 /-!
 # Test for NewlineSepBy as leading argument
@@ -13,7 +13,7 @@ import StrataDDM.Integration.Lean
 Regression test for issue #1245: `checkLeftRec` panics when the leading
 argument of an op is `NewlineSepBy`.
 -/
-
+meta section
 #dialect
 dialect NewlineSepByLeadingTest;
 

@@ -5,7 +5,7 @@
 -/
 module
 
-public import StrataDDM.Integration.Lean
+meta import StrataDDM.Integration.Lean
 
 open StrataDDM
 
@@ -25,7 +25,7 @@ means the fully-parenthesized input below round-trips to the flat form, so the
 left. Before the memoization change this evaluation would not terminate.
 -/
 
-namespace StrataDDMTest.DeepNestedParse
+meta section
 
 #dialect
 dialect DeepNest;
@@ -49,5 +49,3 @@ assert t && t && t && t && t && t && t && t && t && t && t && t && t && t && t &
 program DeepNest;
 assert (((((((((((((((((((t && t) && t) && t) && t) && t) && t) && t) && t) && t) && t) && t) && t) && t) && t) && t) && t) && t) && t) && t);
 #end
-
-end StrataDDMTest.DeepNestedParse

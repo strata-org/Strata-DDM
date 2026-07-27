@@ -5,10 +5,10 @@
 -/
 module
 
-import StrataDDM.Integration.Lean
+meta import StrataDDM.Integration.Lean
 
 open StrataDDM
-
+meta section
 -- Test dialect for pipe-delimited identifiers (SMT-LIB 2.6 syntax)
 #dialect
 dialect PipeIdent;

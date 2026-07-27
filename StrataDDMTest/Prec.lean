@@ -5,11 +5,11 @@
 -/
 module
 
-import StrataDDM.Integration.Lean
-import StrataDDM.Format
+meta import StrataDDM.Integration.Lean
 
 open StrataDDM
 
+meta section
 #dialect
 dialect TestPrec;
 

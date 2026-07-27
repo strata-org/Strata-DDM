@@ -41,7 +41,7 @@ end PersistentDialect
 public structure DialectState where
   loaded : Elab.LoadedDialects
   nameMap : Std.HashMap DialectName Name
-  newDialects : Array (Name × Dialect)
+  exportedDialects : Array (Name × Dialect)
 deriving Inhabited
 
 namespace DialectState
@@ -54,17 +54,21 @@ instance : EmptyCollection DialectState where
       (headerDialect.name, ``headerDialect),
       (StrataDDL.name, ``StrataDDL),
     ],
-    newDialects := #[]
+    exportedDialects := #[]
   }
 
-public def addDialect! (s : DialectState) (d : Dialect) (name : Name) (isNew : Bool) : DialectState where
+public def addDialect! (s : DialectState) (d : Dialect) (name : Name) (isExported : Bool) : DialectState where
   loaded :=
     assert! d.name ∉ s.loaded.dialects
     s.loaded.addDialect! d
   nameMap :=
     assert! d.name ∉ s.nameMap
     s.nameMap.insert d.name name
-  newDialects := if isNew then s.newDialects.push (name, d) else s.newDialects
+  exportedDialects :=
+    if isExported then
+      s.exportedDialects.push (name, d)
+    else
+      s.exportedDialects
 
 end DialectState
 
@@ -73,10 +77,10 @@ def mkImported (e : Array (Array PersistentDialect)) : ImportM DialectState :=
     if d.name ∈ s.loaded.dialects then
       @panic _ ⟨s⟩ s!"Multiple dialects named {d.name} found in imports."
     else
-      s.addDialect! d.dialect d.leanName (isNew := false)
+      s.addDialect! d.dialect d.leanName (isExported := false)
 
 def exportEntries (s : DialectState) : Array PersistentDialect :=
-  s.newDialects.map fun (n, d) => .ofDialect n d
+  s.exportedDialects.map fun (n, d) => .ofDialect n d
 
 public initialize dialectExt : PersistentEnvExtension PersistentDialect (Name × Dialect) DialectState ←
   registerPersistentEnvExtension {
@@ -84,7 +88,7 @@ public initialize dialectExt : PersistentEnvExtension PersistentDialect (Name ×
     addImportedFn := mkImported
     addEntryFn    := fun s (leanName, d) =>
       assert! d.name ∉ s.loaded.dialects
-      DialectState.addDialect! s d leanName (isNew := true)
+      DialectState.addDialect! s d leanName (isExported := !leanName.isInternal)
     exportEntriesFn := exportEntries
   }
 

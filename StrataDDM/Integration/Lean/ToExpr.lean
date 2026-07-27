@@ -103,7 +103,7 @@ namespace SyntaxCatF
 private protected def typeExpr (α : Type) [ToExpr α] := mkApp (mkConst ``SyntaxCatF) (toTypeExpr α)
 
 private protected def toExpr {α} [ToExpr α] (cat : SyntaxCatF α) : Lean.Expr :=
-  let args := arrayToExpr levelZero (SyntaxCatF.typeExpr α) (cat.args.map fun e => e.toExpr)
+  let args := arrayToExpr .zero (SyntaxCatF.typeExpr α) (cat.args.map fun e => e.toExpr)
   astAnnExpr! SyntaxCatF.mk cat.ann (toExpr cat.name) args
 decreasing_by
   simp [SyntaxCatF.sizeOf_spec cat]
@@ -122,14 +122,14 @@ private protected def typeExpr (ann : Lean.Expr) : Lean.Expr :=
 
 private protected def toExpr {α} [ToExpr α] : TypeExprF α → Lean.Expr
 | .ident ann nm a =>
-  let ae := arrayToExpr levelZero (TypeExprF.typeExpr (toTypeExpr α)) (a.map (·.toExpr))
+  let ae := arrayToExpr Level.zero (TypeExprF.typeExpr (toTypeExpr α)) (a.map (·.toExpr))
   astAnnExpr! ident ann (toExpr nm) ae
 | .bvar ann idx =>
   astAnnExpr! bvar ann (toExpr idx)
 | .tvar ann name =>
   astAnnExpr! tvar ann (toExpr name)
 | .fvar ann idx a =>
-  let ae := arrayToExpr levelZero (TypeExprF.typeExpr (toTypeExpr α)) (a.map (·.toExpr))
+  let ae := arrayToExpr Level.zero (TypeExprF.typeExpr (toTypeExpr α)) (a.map (·.toExpr))
   astAnnExpr! fvar ann (toExpr idx) ae
 | .arrow ann a r =>
   astAnnExpr! arrow ann a.toExpr r.toExpr

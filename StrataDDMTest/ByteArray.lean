@@ -4,10 +4,10 @@
   SPDX-License-Identifier: Apache-2.0 OR MIT
 -/
 module
-
-import StrataDDM.Integration.Lean
+meta import StrataDDM.Integration.Lean
 
 -- Minimal dialect to test dialects can be declared.
+meta section
 #guard_msgs in
 #dialect
 dialect Test;

@@ -5,10 +5,11 @@
 -/
 module
 
-public import StrataDDM.Integration.Lean
+public meta import StrataDDM.Integration.Lean
+public meta import StrataDDM.BuiltinDialects
 
+meta section
 public section
-
 -- Minimal dialect to test dialects can be declared.
 #guard_msgs in
 #dialect
@@ -19,6 +20,7 @@ op str (v : Str) : Command => "str " v ";\n";
 // Test whitepace only literals are counted correctly
 op ws (i : Num, j : Num) : Command => "ws " i " " j ";";
 #end
+end
 
 def testProgram := #strata program Test; decimal 1e99; #end
 
@@ -141,5 +143,3 @@ program Test;
 str "\r\u20ac\u2022\x9d\n\t";
 str "\\n\"";
 #end
-
-end

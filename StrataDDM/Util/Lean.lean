@@ -92,8 +92,8 @@ def listToExpr (level : Level) (type : Lean.Expr) (es : List Lean.Expr) : Lean.E
 @[inline]
 def optionToExpr (type : Lean.Expr) (a : Option Lean.Expr) : Lean.Expr :=
   match a with
-  | none => mkApp (mkConst ``Option.none [levelZero]) type
-  | some a => mkApp2 (mkConst ``Option.some [levelZero]) type a
+  | none => mkApp (mkConst ``Option.none [.zero]) type
+  | some a => mkApp2 (mkConst ``Option.some [.zero]) type a
 
 
 end StrataDDM.Lean

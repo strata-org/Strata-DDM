@@ -5,15 +5,12 @@
 -/
 module
 
-import Lean.Elab.Command -- shake: keep
 public import StrataDDM.Util.Ion.AST
+meta import Lean.Elab.Command -- shake: keep
 meta import StrataDDM.Util.Ion.SymbolTable --shake: keep
 
 -- Use metaprogramming to declare `{sym}SymbolId : SymbolId` for each system symbol.
-section
-open Lean (TSyntax)
 open Lean.Elab.Command (elabCommand)
-open Lean.Parser.Category (command)
 
 -- Declare all system symbol ids as constants
 run_cmd do
@@ -27,5 +24,3 @@ run_cmd do
     elabCommand $ ← `(command|
       public def $(leanName) : Ion.SymbolId := ⟨$(Lean.Syntax.mkNatLit idx.value)⟩
     )
-
-end

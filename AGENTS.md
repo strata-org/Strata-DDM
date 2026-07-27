@@ -44,6 +44,12 @@ dialect inline, and `#strata <Dialect>; ... #end` parses a program in that
 dialect. Most tests combine these with `#guard_msgs` to pin the pretty-printed
 or elaborated output — see `StrataDDMTest/Bool.lean` for the canonical shape.
 
+In a file using the module system, a `#dialect` block meant to be visible to
+importing modules must sit in a `public section` (or `public meta section`): the
+dialect is registered non-exported otherwise, so the file still compiles and its
+own `#guard_msgs` tests still pass, but importers fail with `Unknown dialect
+<Name>` — reported in the importing module, not at the `#dialect` itself.
+
 ## Ion serialization
 
 `StrataDDM/Ion.lean` + `Util/Ion/` implement (de)serialization to

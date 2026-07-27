@@ -4,9 +4,9 @@
   SPDX-License-Identifier: Apache-2.0 OR MIT
 -/
 module
+meta import StrataDDM.Integration.Lean
 
-import StrataDDM.Integration.Lean
-
+meta section
 -- Test that Bool can be used as an inductive type with true/false operators
 #dialect
 dialect TestBool;

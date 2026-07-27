@@ -5,7 +5,7 @@
 -/
 module
 
-import StrataDDM.Integration.Lean
+meta import StrataDDM.Integration.Lean
 
 /-!
 # Tests for Scoped Function Declarations in DDM
@@ -15,7 +15,7 @@ using the `@[declareFn]` annotation combined with `@[scope]`.
 
 This tests the DDM scoping mechanism independently of the Strata Core language.
 -/
-
+meta section
 #dialect
 dialect TestScopedFn;
 

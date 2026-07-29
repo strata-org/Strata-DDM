@@ -1129,14 +1129,13 @@ partial def elabOperation (tctx : TypingContext) (stx : Syntax) : ElabM Tree := 
   if not success then
     return default
   let getKind i := .ofArgDeclKind argDecls[i].kind
-  let typecheck := (← read).typecheck
   let ((args, newCtx), success) ← runChecked <|
-    -- When typecheck is off, skip pre-registration passes. Global context
-    -- is already populated by `computeGlobalContext` at program creation.
-    if !typecheck then do
-      let args ← runSyntaxElaborator (argc := argDecls.size) getKind se tctx stxArgs
-      return (args, resultContext se tctx args)
-    else
+    -- Pre-registration runs regardless of the `typecheck` flag: it registers
+    -- datatype/function names so that mutual and recursive references resolve
+    -- (e.g. a datatype's own name is in scope while its constructor field types
+    -- resolve). Only type inference (`inferType`/`unifyTypes`, gated inside
+    -- `elabSyntaxArg`) is skipped when typecheck is off. The global context is
+    -- already populated by `computeGlobalContext` at program creation.
     match se.preRegisterTypesScope with
     | some scopeArgLevel =>
       elaborateWithPreRegistrationCore argDecls se tctx loc stxArgs scopeArgLevel

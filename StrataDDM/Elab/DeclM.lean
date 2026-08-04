@@ -26,6 +26,13 @@ def infoSourceRange (info : Lean.SourceInfo) : Option SourceRange :=
     some { start := pos, stop := endPos }
   | .none  => none
 
+/-- A node's *own* source range (from its head info), without descending into
+children. `none` for a `.node` that carries no range of its own. -/
+private def ownRange (stx : Syntax) : Option SourceRange :=
+  match stx with
+  | .atom info .. | .ident info .. | .node info .. => infoSourceRange info
+  | .missing => none
+
 def sourceLocPos (stx:Syntax) : Option String.Pos.Raw :=
   match stx with
   | .atom info .. | .ident info .. =>
@@ -35,12 +42,35 @@ def sourceLocPos (stx:Syntax) : Option String.Pos.Raw :=
     | some loc =>
       some loc.start
     | .none  =>
+      -- First child's start, with no leading zero-width skip (unlike `sourceLocEnd`).
+      -- The parser makes whitespace the *preceding* token's trailing trivia, so a
+      -- leading absent optional sits at the next real token — a correct start. Only
+      -- a trailing absent optional lands past consumed whitespace (`sourceLocEnd`
+      -- skips those).
       if h : args.size > 0 then
         sourceLocPos args[0]
       else
         none
   | .missing => none
 
+/-- End position of a syntax tree, skipping trailing zero-width children.
+
+For a node with no range of its own, the end is that of its last child that covers
+source text, found by scanning right-to-left and skipping zero-width children. A
+trailing element with no concrete syntax — an absent trailing optional, or an
+empty-template op (`op else0 () => ;`) — parses to a zero-width node past the real
+content (on the preceding token's consumed trailing whitespace), so it must be
+skipped, not taken as the end. The common case is an O(1) own-info check: these nodes
+carry their own zero-width range (stamped by the parser). A rangeless nested op is the
+exception — it needs a descent to tell whether its subtree is zero-width (see
+`lastSpanningEnd`'s `none` case).
+
+The skip lives here, in the descending function, so a parent reaching a nested
+child's end gets the corrected position at every level, e.g. `if … else new C` →
+`else` → `new` → its absent trailing type-args. `mkSourceRange?` is then just
+`⟨sourceLocPos, sourceLocEnd⟩`. The `i == 0` case keeps the first child's end even
+if empty, so a wholly-empty node still yields a position. The skip is one-sided —
+`sourceLocPos` needs no *leading* skip (see its comment). -/
 def sourceLocEnd (stx:Syntax) : Option String.Pos.Raw :=
   match stx with
   | .atom info ..  | .ident info .. =>
@@ -50,45 +80,49 @@ def sourceLocEnd (stx:Syntax) : Option String.Pos.Raw :=
     | some loc =>
       some loc.stop
     | .none  =>
-      if h : args.size > 0 then
-        sourceLocEnd args[args.size - 1]
-      else
-        none
+      if h : 0 < args.size then lastSpanningEnd args ⟨args.size - 1, by omega⟩ else none
   | .missing => none
+where
+  /-- `stop` of the rightmost child in `args[0…i]` that covers source text, skipping
+  trailing zero-width children (classified below). Falls back to `args[0]`'s end, so a
+  node all of whose children are zero-width still yields a position. -/
+  lastSpanningEnd (args : Array Syntax) (i : Fin args.size) : Option String.Pos.Raw :=
+    -- Classify the child from its *own* info first (O(1), no descent):
+    --   spanning own range   → its end is `r.stop`; keep it (no `sourceLocEnd` walk).
+    --   zero-width own range → a no-concrete-syntax element (absent optional or
+    --                          empty-template op, both `emptySourceInfo`-stamped);
+    --                          skip it, scanning left.
+    --   no own range         → a nested op; recurse for its end, and skip it too if
+    --                          that subtree is itself zero-width (see below).
+    -- Only the nested-op case descends (plus a conditional start probe; see below).
+    match ownRange args[i] with
+    | some r =>
+      if r.start != r.stop then some r.stop
+      else if h : 0 < i.val then lastSpanningEnd args ⟨i.val - 1, by omega⟩
+      else some r.stop      -- all children zero-width: fall back to the first
+    | none =>
+      -- A rangeless nested op can itself be a zero-width subtree (all descendants
+      -- absent): computed end == start. The `some r` branch skips a stamped zero-width
+      -- range; this one has none, so detect it by `sourceLocEnd == sourceLocPos`. The
+      -- `sourceLocPos` probe fires only for a spanning child with a skip still possible
+      -- (`i > 0`), so a real last child pays nothing; cost is linear in spine depth.
+      match sourceLocEnd args[i], h : i.val with
+      | none,   0     => none
+      | none,   _ + 1 => lastSpanningEnd args ⟨i.val - 1, by omega⟩
+      | some e, 0     => some e
+      | some e, _ + 1 => if sourceLocPos args[i] == some e     -- zero-width subtree: skip
+                         then lastSpanningEnd args ⟨i.val - 1, by omega⟩
+                         else some e
 
+/-- Source range of a syntax tree: its start position paired with its end.
+
+Both bounds come from `sourceLocPos` / `sourceLocEnd`, so the trailing
+zero-width skip that `sourceLocEnd` performs is honored here for free — this is
+just the two positional queries combined. -/
 def mkSourceRange? (stx:Syntax) : Option SourceRange :=
-  match stx with
-  | .atom info ..  | .ident info .. =>
-    infoSourceRange info
-  | .node info _kind args  =>
-    match infoSourceRange info with
-    | some loc => some loc
-    | none  =>
-      match h : args.size with
-      | 0 => none
-      | 1 => mkSourceRange? args[0]
-      | Nat.succ n => Id.run do
-        let some s := sourceLocPos args[0]
-          | return none
-        -- Walk backwards to find the last arg with a non-zero-width range.
-        -- Empty optional nodes (absent optionals) have start == stop and sit
-        -- after trailing whitespace/comments, so we skip them.
-        let mut stopPos : Option String.Pos.Raw := none
-        let mut i := n
-        repeat
-          let ep := sourceLocEnd args[i]!
-          let sp := sourceLocPos args[i]!
-          match ep, sp with
-          | some e, some s2 =>
-            if e != s2 || i == 0 then stopPos := some e
-          | some e, none => stopPos := some e
-          | none, _ => pure ()
-          if stopPos.isSome || i == 0 then break
-          i := i - 1
-        let some t := stopPos
-          | return none
-        some { start := s, stop := t }
-  | .missing => none
+  match sourceLocPos stx, sourceLocEnd stx with
+  | some start, some stop => some { start, stop }
+  | _, _ => none
 
 namespace PrattParsingTableMap
 

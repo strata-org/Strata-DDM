@@ -999,11 +999,26 @@ def opSyntaxParser (ctx : ParsingContext)
     | .isLeading [] =>
       let fn (c : ParserContext) (s : ParserState) : ParserState :=
         s.pushSyntax (.atom (emptySourceInfo c s.pos) "")
+      -- An empty-template op (`op else0 () : Else => ;`) has no concrete syntax, so
+      -- `node`'s `mkNode` stamps the wrapping node with `SourceInfo.none`. That node is
+      -- zero-width but carries no *own* range, so a parent computing its end descends
+      -- into it and adopts the child atom's position — which sits past the preceding
+      -- token's consumed trailing trivia (e.g. on the next line for `if c then t <else>`),
+      -- overshooting the parent's range. Restamp the node with a zero-width
+      -- `emptySourceInfo`, exactly as `optionalFn`/`sepByParser`/`manyParser` do for their
+      -- empty results, so it carries its own range: `sourceLocEnd`'s O(1) `ownRange` check
+      -- then sees a zero-width span and skips it. The op's *own* range is `{pos, pos}`,
+      -- read from its own info; `isNone` stays false.
+      let restamp (c : ParserContext) (s : ParserState) : ParserState :=
+        if s.hasError then s else
+          match s.stxStack.back with
+          | .node .none k args => s.popSyntax.pushSyntax (.node (emptySourceInfo c s.pos) k args)
+          | _ => s
       pure {
         category,
         outerPrec := prec,
         isLeading := true,
-        parser := node n { fn := fn } >> setLhsPrec prec
+        parser := node n { fn := fn } >> { fn := restamp } >> setLhsPrec prec
       }
     | .isLeading args =>
       let p := liftToKind ctx args argDecls

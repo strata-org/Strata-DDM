@@ -1424,10 +1424,12 @@ def ofArray
     (name : DialectName)
     (importDialects : Array DialectName)
     (a : Array Decl)
+    (typecheck : Bool := true)
     : Dialect where
   name := name
   imports := importDialects
   declarations := a
+  typecheck := typecheck
   cache := a.foldl (fun m d => m.insert d.name d) {}
 
 def addDecl (d : Dialect) (decl : Decl) : Dialect :=

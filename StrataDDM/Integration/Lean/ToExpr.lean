@@ -509,7 +509,7 @@ end Decl
 instance Dialect.instToExpr : ToExpr Dialect where
   toTypeExpr := private mkConst ``Dialect
   toExpr d := private
-    astExpr! Dialect.ofArray (toExpr d.name) (toExpr d.imports) (toExpr d.declarations)
+    astExpr! Dialect.ofArray (toExpr d.name) (toExpr d.imports) (toExpr d.declarations) (toExpr d.typecheck)
 
 namespace DialectMap
 

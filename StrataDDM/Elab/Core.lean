@@ -473,11 +473,11 @@ partial def unifyTypes
   | .bvar _ idx =>
     let .isTrue idxP := decideProp (idx < argLevel)
       | return panic! "Invalid index"
-    let typeLevel := argLevel - (idx + 1)
+    let typeLevel : Fin argc := ⟨argLevel - (idx + 1), by omega⟩
     -- Verify type level is a type parameter.
-    assert! isTypeP ⟨typeLevel, by omega⟩
+    assert! isTypeP typeLevel
 
-    match args[typeLevel] with
+    match args.get typeLevel with
     | none => do
       let info : TypeInfo := {
         loc := exprLoc
@@ -542,7 +542,7 @@ def elabOption (f : ElabArgFn) : ElabArgFn := fun tctx stx =>
     pure <| .node (.ofOptionInfo info) #[tree]
 
 def evalBindingNameIndex {n} (trees : Vector Tree n) (idx : DebruijnIndex n) : String :=
-  match trees[idx.toLevel].info with
+  match (trees.get idx.toLevel).info with
   | .ofIdentInfo e => e.val
   | a => panic! s!"Expected ident at {idx.val} {repr a}"
 
@@ -567,7 +567,7 @@ def elabArgIndex {α} {n}
     ElabM (Array α) := do
   match argsIndex with
   | none => pure #[]
-  | some idx => collectNewBindingsM initialScope trees[idx.toLevel] f
+  | some idx => collectNewBindingsM initialScope (trees.get idx.toLevel) f
 
 /--
 Parse TypeApp and TypeParen expressions to get Init.TypeExpr into head-format form.
@@ -864,7 +864,7 @@ def evalBindingSpec
     if !success then
       return default
     let bindings := bindings.filterMap id
-    let typeTree := args[b.typeIndex.toLevel]
+    let typeTree := args.get b.typeIndex.toLevel
     let kind ←
           match typeTree.info with
           | .ofTypeInfo info =>
@@ -891,7 +891,7 @@ def evalBindingSpec
           match b.defIndex with
           | none => none
           | some idx =>
-            match args[idx.toLevel].info with
+            match (args.get idx.toLevel).info with
             | .ofTypeInfo info =>
               some info.typeExpr
             | _ =>
@@ -904,7 +904,7 @@ def evalBindingSpec
           match b.defIndex with
           | none => none
           | some idx =>
-            match args[idx.toLevel].info with
+            match (args.get idx.toLevel).info with
             | .ofTypeInfo info =>
               some info.typeExpr
             | _ =>
@@ -915,8 +915,8 @@ def evalBindingSpec
     let newGctx := gctx.ensureDefined ident gkind
     pure (tctx.withGlobalContext newGctx)
   | .datatype b =>
-    let nameInfo := args[b.nameIndex.toLevel].info
-    let (nameLoc, ident) ←
+    let nameInfo := (args.get b.nameIndex.toLevel).info
+    let (_nameLoc, ident) ←
         match nameInfo with
         | .ofIdentInfo i =>
           pure (i.loc, i.val)
@@ -930,7 +930,7 @@ def evalBindingSpec
 
     let dialects := (← read).dialects
 
-    let t := args[b.constructorsIndex.toLevel]
+    let t := args.get b.constructorsIndex.toLevel
     match extractConstructorInfo dialects t.arg with
     | .ok info =>
       let mut seen : Std.HashSet String := {}

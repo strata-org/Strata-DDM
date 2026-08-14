@@ -23,11 +23,9 @@ def SyntaxCat.mkSpacePrefixSepBy (c:SyntaxCat) : SyntaxCat := { ann := .none, na
 def SyntaxCat.mkNewlineSepBy (c:SyntaxCat) : SyntaxCat := { ann := .none, name := q`Init.NewlineSepBy, args := #[c] }
 def SyntaxCat.mkSemicolonSepBy (c:SyntaxCat) : SyntaxCat := { ann := .none, name := q`Init.SemicolonSepBy, args := #[c] }
 
-def initDialect : Dialect := BuiltinM.create! "Init" #[] do
-  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
-  let Num : SyntaxCat := .atom .none q`Init.Num
-  let Str : SyntaxCat := .atom .none q`Init.Str
 
+/-- Primitive atomic categories, `Bool`, and the separated-list categories. -/
+private def initPrimitiveCats : BuiltinM Unit := do
   declareAtomicCat q`Init.Ident
   declareAtomicCat q`Init.Num
   declareAtomicCat q`Init.ByteArray
@@ -62,6 +60,9 @@ def initDialect : Dialect := BuiltinM.create! "Init" #[] do
 
   declareCat q`Init.SemicolonSepBy #["a"]
 
+/-- The `QualifiedIdent` category and its operators. -/
+private def initQualifiedIdentCat : BuiltinM Unit := do
+  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
   let QualifiedIdent := q`Init.QualifiedIdent
   declareCat QualifiedIdent
   declareOp {
@@ -88,6 +89,9 @@ def initDialect : Dialect := BuiltinM.create! "Init" #[] do
      syntaxDef := .ofList [.ident 0 0, .str ".", .ident 1 0],
   }
 
+/-- The `TypeExpr` category and its operators. -/
+private def initTypeExprCat : BuiltinM Unit := do
+  let QualifiedIdent := q`Init.QualifiedIdent
   let TypeExprId := q`Init.TypeExpr
   let TypeExpr : ArgDeclKind := .cat (.atom .none TypeExprId)
   declareCat TypeExprId
@@ -126,6 +130,11 @@ def initDialect : Dialect := BuiltinM.create! "Init" #[] do
     syntaxDef := .ofList (prec := 40) [.ident 0 39, .ident 1 40]
   }
 
+/-- The `Type` and `Expr` categories and their operators. -/
+private def initTypeAndExprCats : BuiltinM Unit := do
+  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
+  let TypeExprId := q`Init.TypeExpr
+  let TypeExpr : ArgDeclKind := .cat (.atom .none TypeExprId)
   let «Type» := q`Init.Type
   declareCat «Type»
   declareOp  {
@@ -165,6 +174,10 @@ def initDialect : Dialect := BuiltinM.create! "Init" #[] do
     syntaxDef := .ofList [.ident 0 0, .str "(", .ident 1 0, .str ")"]
   }
 
+/-- The `MetadataArg` category and its base operators. -/
+private def initMetadataArgCat : BuiltinM Unit := do
+  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
+  let Num : SyntaxCat := .atom .none q`Init.Num
   let MetadataArg := q`Init.MetadataArg
   declareCat MetadataArg
   declareOp {
@@ -218,6 +231,11 @@ def initDialect : Dialect := BuiltinM.create! "Init" #[] do
     syntaxDef := .ofList [.str "none"]
   }
 
+
+/-- Function-template categories for datatype declarations, plus the `MetadataArg` function-template operator. -/
+private def initFunctionTemplateCats : BuiltinM Unit := do
+  let Str : SyntaxCat := .atom .none q`Init.Str
+  let MetadataArg := q`Init.MetadataArg
   -- =====================================================================
   -- Function Template Syntax for Datatype Declarations
   -- =====================================================================
@@ -342,6 +360,10 @@ def initDialect : Dialect := BuiltinM.create! "Init" #[] do
     syntaxDef := .ofList [.ident 0 0]
   }
 
+/-- The `MetadataArgs`, `MetadataAttr`, `Metadata`, and `Command` categories. -/
+private def initMetadataAggregateCats : BuiltinM Unit := do
+  let MetadataArg := q`Init.MetadataArg
+  let QualifiedIdent := q`Init.QualifiedIdent
   let MetadataArgs := q`Init.MetadataArgs
   declareCat MetadataArgs
   declareOp {
@@ -379,6 +401,13 @@ def initDialect : Dialect := BuiltinM.create! "Init" #[] do
   let Command := q`Init.Command
   declareCat Command
 
+/-- The `BindingType`, `TypeP`, and syntax-definition categories. -/
+private def initBindingAndSyntaxCats : BuiltinM Unit := do
+  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
+  let Num : SyntaxCat := .atom .none q`Init.Num
+  let Str : SyntaxCat := .atom .none q`Init.Str
+  let TypeExprId := q`Init.TypeExpr
+  let TypeExpr : ArgDeclKind := .cat (.atom .none TypeExprId)
   let BindingType := q`Init.BindingType
   declareCat BindingType
   declareOp  {
@@ -453,3 +482,13 @@ def initDialect : Dialect := BuiltinM.create! "Init" #[] do
     category := SyntaxDef,
     syntaxDef := .ofList [.ident 0 0],
   }
+
+def initDialect : Dialect := BuiltinM.create! "Init" #[] do
+  initPrimitiveCats
+  initQualifiedIdentCat
+  initTypeExprCat
+  initTypeAndExprCats
+  initMetadataArgCat
+  initFunctionTemplateCats
+  initMetadataAggregateCats
+  initBindingAndSyntaxCats

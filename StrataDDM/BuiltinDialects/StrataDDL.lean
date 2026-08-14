@@ -14,14 +14,13 @@ open StrataDDM.Elab
 public section
 namespace StrataDDM
 
-def StrataDDL : Dialect := BuiltinM.create! "StrataDDL" #[initDialect] do
-  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
-  let BindingType := q`Init.BindingType
-  let Command := q`Init.Command
-  let Metadata := q`Init.Metadata
-  let SyntaxDef := q`Init.SyntaxDef
-  let TypeExpr := q`Init.TypeExpr
 
+/-- The `TypeFn` type-expression operator plus the `Binding` and `Bindings` categories. -/
+private def initDDLTypeFnAndBindings : BuiltinM Unit := do
+  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
+  let TypeExpr := q`Init.TypeExpr
+  let BindingType := q`Init.BindingType
+  let Metadata := q`Init.Metadata
   -- Extend dialect with operation for constructing functions
   -- from bindings name and type.
   declareOp {
@@ -58,6 +57,10 @@ def StrataDDL : Dialect := BuiltinM.create! "StrataDDL" #[initDialect] do
       syntaxDef := .ofList [.str "(", .ident 0 0, .str ")" ],
     }
 
+/-- The `import`, `dialect_option`, and `category` commands. -/
+private def initDDLSimpleCommands : BuiltinM Unit := do
+  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
+  let Command := q`Init.Command
   declareOp {
     name := "importCommand",
     argDecls := .ofArray #[
@@ -83,6 +86,15 @@ def StrataDDL : Dialect := BuiltinM.create! "StrataDDL" #[initDialect] do
     category := Command,
     syntaxDef := .ofList [.str "category", .ident 0 0, .str ";"]
   }
+
+/-- The `op` command. -/
+private def initDDLOpCommand : BuiltinM Unit := do
+  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
+  let Command := q`Init.Command
+  let Bindings := q`StrataDDL.Bindings
+  let BindingType := q`Init.BindingType
+  let Metadata := q`Init.Metadata
+  let SyntaxDef := q`Init.SyntaxDef
   declareOp {
     name := "opCommand",
     argDecls := .ofArray #[
@@ -112,6 +124,12 @@ def StrataDDL : Dialect := BuiltinM.create! "StrataDDL" #[initDialect] do
     category := Command,
     syntaxDef:= .ofList [.ident 3 0, .str "op", .ident 0 0, .ident 1 0, .str ":", .ident 2 0, .str "=>", .ident 4 0, .ident 5 0, .str ";"]
   }
+
+/-- The `type` command. -/
+private def initDDLTypeCommand : BuiltinM Unit := do
+  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
+  let Command := q`Init.Command
+  let Bindings := q`StrataDDL.Bindings
   declareOp {
     name := "typeCommand",
     argDecls := .ofArray #[
@@ -121,6 +139,15 @@ def StrataDDL : Dialect := BuiltinM.create! "StrataDDL" #[initDialect] do
     category := Command,
     syntaxDef := .ofList [.str "type", .ident 0 0, .ident 1 0, .str ";"]
   }
+
+/-- The `fn` command. -/
+private def initDDLFnCommand : BuiltinM Unit := do
+  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
+  let Command := q`Init.Command
+  let Bindings := q`StrataDDL.Bindings
+  let BindingType := q`Init.BindingType
+  let Metadata := q`Init.Metadata
+  let SyntaxDef := q`Init.SyntaxDef
   declareOp {
     name := "fnCommand",
     argDecls := .ofArray #[
@@ -150,6 +177,12 @@ def StrataDDL : Dialect := BuiltinM.create! "StrataDDL" #[initDialect] do
     category := Command,
     syntaxDef := .ofList [.ident 3 0, .str "fn", .ident 0 0, .ident 1 0, .str ":", .ident 2 0, .str "=>", .ident 4 0, .ident 5 0, .str ";"]
   }
+
+/-- The `metadata` command and the metadata-attribute declarations. -/
+private def initDDLMetadataDecls : BuiltinM Unit := do
+  let Ident : ArgDeclKind := .cat <| .atom .none q`Init.Ident
+  let Command := q`Init.Command
+  let Bindings := q`StrataDDL.Bindings
   declareOp {
     name := "mdCommand",
     argDecls := .ofArray #[
@@ -192,6 +225,14 @@ def StrataDDL : Dialect := BuiltinM.create! "StrataDDL" #[initDialect] do
      as type variables inside constructor field types. -/
   declareMetadata { name := "scopeTVar", args := #[.mk "typeParams" .ident] }
   declareMetadata { name := "preRegisterFunctions", args := #[.mk "scope" .ident] }
+
+def StrataDDL : Dialect := BuiltinM.create! "StrataDDL" #[initDialect] do
+  initDDLTypeFnAndBindings
+  initDDLSimpleCommands
+  initDDLOpCommand
+  initDDLTypeCommand
+  initDDLFnCommand
+  initDDLMetadataDecls
 
 end StrataDDM
 end

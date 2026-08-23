@@ -216,14 +216,16 @@ namespace StrataFormat
 
 private protected def nil : StrataFormat := fun _ _ => .atom .nil
 
-/-- Pretty print a free variable with the given index -/
-private protected def fvar (fvarIdx : Nat) : StrataFormat := fun c _ => .atom (c.fvarName fvarIdx)
+/-- Pretty print a free variable with the given index. Names with special
+    characters (e.g. `#` in monomorphized names) are pipe-quoted so the
+    output re-parses correctly. -/
+private protected def fvar (fvarIdx : Nat) : StrataFormat := fun c _ => .atom (formatIdent (c.fvarName fvarIdx))
 
 /-- Pretty print a bound variable with the given deBruijn index -/
-private protected def lvlVar (lvl : Nat) : StrataFormat := fun _ s => .atom (s.lvlVarName lvl)
+private protected def lvlVar (lvl : Nat) : StrataFormat := fun _ s => .atom (formatIdent (s.lvlVarName lvl))
 
 /-- Pretty print a bound variable with the given deBruijn index -/
-private protected def bvar (idx : Nat) : StrataFormat := fun _ s => .atom (s.bvarName idx)
+private protected def bvar (idx : Nat) : StrataFormat := fun _ s => .atom (formatIdent (s.bvarName idx))
 
 /--
 Join together elements in list with no separator between adjacent elements.

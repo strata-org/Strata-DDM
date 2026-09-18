@@ -118,10 +118,15 @@ def stringInputContext (fileName : System.FilePath) (contents : String) : InputC
   fileMap  := FileMap.ofString contents
 
 -- When updating this, you will want to consider updating Strata.isIdBegin in Strata/DDM/Format.lean as well.
-private def strataIsIdFirst (c : Char) : Bool :=
+
+/-- The characters an identifier may begin with. With `strataIsIdRest`, this is the
+    alphabet the lexer accepts unquoted. -/
+@[expose] def strataIsIdFirst (c : Char) : Bool :=
   c.isAlpha || c == '_' || c == '$'
 
-private def strataIsIdRest (c : Char) : Bool :=
+/-- The characters an identifier may continue with. Wider than `strataIsIdFirst`,
+    and note it admits `'`, so a primed name such as `x'` lexes bare. -/
+@[expose] def strataIsIdRest (c : Char) : Bool :=
   c.isAlphanum || c == '_' || c == '\'' || c == '.' || c == '?' || c == '!' || c == '$' || c == '@'
 
 private def isIdFirstOrBeginEscape (c : Char) : Bool :=

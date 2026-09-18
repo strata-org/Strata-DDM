@@ -22,7 +22,7 @@ Regular identifiers must start with a letter or underscore.
 
 NOTE: When updating this function, you will want to consider updating Strata/DDM/Parser.lean as well.
 -/
-private def isIdBegin (c : Char) : Bool :=
+@[expose] def isIdBegin (c : Char) : Bool :=
   c.isAlpha || c == '_' || c == '$'
 
 /--
@@ -34,7 +34,7 @@ Note: `'` (apostrophe) is intentionally excluded. Although SMT-LIB 2.6 allows
 it in simple symbols, both cvc5 and Z3 reject it as an unquoted character.
 Names containing `'` (e.g. Lean's `v'`) will be pipe-quoted instead.
 -/
-private def isIdContinue (c : Char) : Bool :=
+@[expose] def isIdContinue (c : Char) : Bool :=
   c.isAlphanum || c == '_' || c == '.' || c == '?' || c == '!' || c == '@' || c == '$'
 
 /--

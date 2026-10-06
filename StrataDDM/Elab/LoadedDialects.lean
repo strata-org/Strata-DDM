@@ -38,6 +38,8 @@ structure LoadedDialects where
   dialectParsers : DialectParsers
   /--/ Map for elaborating operations and functions. -/
   syntaxElabMap : SyntaxElabMap
+  /-- Optional decoder for string literals in consumer-specific concrete syntax. -/
+  stringLiteralDecoder : Option Parser.StringLiteralDecoder := none
 deriving Inhabited
 
 @[reducible]
@@ -50,13 +52,17 @@ def initParsers : Parser.ParsingContext where
     (q`Init.Str, Parser.strLit)
   ]
 
-def DialectParsers.ofDialects (ds : Array Dialect) : Except String DialectParsers :=
+def DialectParsers.ofDialectsWith (pctx : Parser.ParsingContext)
+    (ds : Array Dialect) : Except String DialectParsers :=
   ds.foldlM (init := {}) fun m d =>
-    match initParsers.mkDialectParsers d with
+    match pctx.mkDialectParsers d with
     | .error msg =>
       .error s!"Could not add open dialect: {eformat msg |>.pretty}"
     | .ok parsers =>
       .ok (m.insert d.name parsers)
+
+def DialectParsers.ofDialects (ds : Array Dialect) : Except String DialectParsers :=
+  DialectParsers.ofDialectsWith initParsers ds
 
 def SyntaxElabMap.ofDialects (ds : Array Dialect) : Except String SyntaxElabMap :=
   ds.foldlM (init := {}) (·.addDialect ·)
@@ -82,10 +88,11 @@ def addDialect! (loader : LoadedDialects) (d : Dialect) : LoadedDialects :=
       dialects := loader.dialects.insert! d
       dialectParsers := loader.dialectParsers.insert d.name parsers
       syntaxElabMap
+      stringLiteralDecoder := loader.stringLiteralDecoder
     }
 
-def ofDialects! (ds : Array Dialect) : LoadedDialects :=
-  match DialectParsers.ofDialects ds with
+def ofDialectsWith! (pctx : Parser.ParsingContext) (ds : Array Dialect) : LoadedDialects :=
+  match DialectParsers.ofDialectsWith pctx ds with
   | .error msg =>
     panic s!"Could not add open dialect: {eformat msg |>.pretty}"
   | .ok parsers =>
@@ -97,7 +104,11 @@ def ofDialects! (ds : Array Dialect) : LoadedDialects :=
       dialects := .ofList! ds.toList
       dialectParsers := parsers
       syntaxElabMap
+      stringLiteralDecoder := pctx.stringLiteralDecoder
     }
+
+def ofDialects! (ds : Array Dialect) : LoadedDialects :=
+  ofDialectsWith! initParsers ds
 
 end LoadedDialects
 

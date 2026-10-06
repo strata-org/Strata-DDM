@@ -7,6 +7,7 @@ module
 
 public import StrataDDM.Elab.Env
 public import StrataDDM.Format
+import StrataDDM.Util.String
 import all StrataDDM.Util.DecideProp
 
 open Lean
@@ -72,6 +73,16 @@ export Lean.Parser (
     minPrec
     skip
     )
+
+/--
+Decode one string literal at `startPos`, returning its value and the position immediately
+after it.
+-/
+abbrev StringLiteralDecoder :=
+  String → String.Pos.Raw → Except String (String × String.Pos.Raw)
+
+initialize stringLiteralDecoderExt :
+    EnvExtension (Option StringLiteralDecoder) ← registerEnvExtension (pure none)
 
 def TokenTable.addParser (tt : TokenTable) (p : Parser) : TokenTable :=
   let tkns := p.info.collectTokens []
@@ -504,11 +515,24 @@ partial def strLitFnAux (startPos : String.Pos.Raw) : ParserFn := fun c s =>
     else if curr == '\\' then andthenFn quotedStringFn (strLitFnAux startPos) c s
     else strLitFnAux startPos c s
 
+private def decodedStrLitFn (decode : StringLiteralDecoder) : ParserFn := fun c s =>
+  let startPos := s.pos
+  match decode c.inputString startPos with
+  | .error msg => s.mkError msg
+  | .ok (value, stopPos) =>
+    let leading := c.mkEmptySubstringAt startPos
+    let s := whitespace c (s.setPos stopPos)
+    let trailing := c.substring (startPos := stopPos) (stopPos := s.pos)
+    let info := SourceInfo.original leading startPos trailing stopPos
+    s.pushSyntax (Syntax.mkLit strLitKind (StrataDDM.escapeStringLit value) info)
+
 private def tokenFnAux : ParserFn := fun c s =>
   let i     := s.pos
   let curr  := c.get i
   if curr == '\"' then
-    strLitFnAux i c (s.next c i)
+    match stringLiteralDecoderExt.getState c.env with
+    | some decode => decodedStrLitFn decode c s
+    | none => strLitFnAux i c (s.next c i)
   else if curr == '\'' && c.getNext i != '\'' then
     charLitFnAux i c (s.next c i)
   else if curr = 'b' ∧ c.getNext i = '\"' then
@@ -804,6 +828,7 @@ structure DeclParser where
 
 class ParsingContext where
   fixedParsers : Std.HashMap QualifiedIdent Parser := {}
+  stringLiteralDecoder : Option StringLiteralDecoder := none
 
 instance : Inhabited ParsingContext where
   default := {}
@@ -813,7 +838,7 @@ namespace ParsingContext
 @[reducible]
 def add (ctx : ParsingContext) (cat : QualifiedIdent) (p : Parser) : ParsingContext :=
   assert! cat ∉ ctx.fixedParsers
-  { fixedParsers := ctx.fixedParsers.insert cat p }
+  { ctx with fixedParsers := ctx.fixedParsers.insert cat p }
 
 /-- Parser function for given syntax category -/
 def atomCatParser (ctx : ParsingContext) (cat : QualifiedIdent) : Parser :=
@@ -1064,8 +1089,11 @@ def runCatParser (tokenTable : TokenTable)
                  (parsingTableMap : PrattParsingTableMap)
                  (leanEnv : Lean.Environment)
                  (inputContext : InputContext)
-                 (pos stopPos : String.Pos.Raw) (cat : QualifiedIdent) : Lean.Parser.ParserState :=
+                 (pos stopPos : String.Pos.Raw) (cat : QualifiedIdent)
+                 (stringLiteralDecoder : Option StringLiteralDecoder := none) :
+                 Lean.Parser.ParserState :=
   let leanEnv := parserExt.modifyState leanEnv (fun _ => parsingTableMap)
+  let leanEnv := stringLiteralDecoderExt.modifyState leanEnv (fun _ => stringLiteralDecoder)
   let pmc : ParserModuleContext := { env := leanEnv, options := {} }
   let leanParserState : Lean.Parser.ParserState := {
     pos      := pos

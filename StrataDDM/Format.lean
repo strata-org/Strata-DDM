@@ -92,8 +92,8 @@ Options to control parenthesis
 structure FormatOptions where
   /-- Always add parenthesis when feasible. -/
   alwaysParen : Bool := false
-  /-- Use SMT-LIB 2.7 string escaping (`""` for quotes) instead of C-style (`\"`). -/
-  smtStringEscaping : Bool := false
+  /-- Override string-literal rendering for a consumer-specific concrete syntax. -/
+  customStringEscaper : Option (String → String) := none
   /-- Force a format mode per literal kind (e.g. `"decimal"`), overriding any
       dialect-declared spec. An absent entry means "use each type's default". -/
   formatModes : Std.HashMap String FormatMode := {}
@@ -445,8 +445,8 @@ private partial def ArgF.mformatM {α} : ArgF α → FormatM PrecFormat
     pure <| pformatStr (StrataRender.render (resolveMode ctx "decimal") v)
 | .strlit _ s => do
     let ctx ← read
-    let esc := if ctx.opts.smtStringEscaping then escapeSMTStringLit s else escapeStringLit s
-    return .atom (.text esc)
+    let escape := ctx.opts.customStringEscaper.getD escapeStringLit
+    return .atom (.text (escape s))
 | .bytes _ v => return .atom <| .text <| ByteArray.escapeBytes v
 | .option _ ma =>
   match ma with

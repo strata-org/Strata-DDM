@@ -87,7 +87,19 @@ public section
 namespace StrataDDM
 
 /--
-Return true if this is a non-printable 8-bit character
+Return true if this is a non-printable 8-bit character, i.e. one `escapeStringLit`
+has to spell with a `\xNN` escape.
+
+**This predicate is specific to the `\xNN` format and has to stay 8-bit.** Two hex
+digits cannot name a code point above `0xFF`, and `escapeStringLitAux` relies on
+that: it asserts `digits.length = 2` and reads `digits[0]!`/`digits[1]!`, so a
+character this admitted but `\xNN` could not name would be emitted with its
+leading digits dropped — `α` (`0x3B1`) as `\x3b`, a *different* string, silently.
+Everything admitted here is in `0x00`-`0xFF` by construction: the C0 controls,
+DEL, the C1 controls, and the soft hyphen.
+
+It is deliberately not an SMT-LIB output policy. Consumers that need a different
+string syntax provide their own formatter callback.
 -/
 private def useXHex ( c : Char) : Bool :=
   c < '\x20' ∨ '\x7f' ≤ c ∧ (c < '\xa1' ∨ c == '\xad')
@@ -116,24 +128,6 @@ private def escapeStringLitAux (acc : String) (c : Char) : String :=
 
 def escapeStringLit (s : String) : String :=
   s.foldl escapeStringLitAux "\"" ++ "\""
-
-/--
-Escape a string literal for SMT-LIB 2.7 output.
-In SMT-LIB 2.7, double quotes are escaped by doubling them (`""`),
-and non-printable characters use `\u{XXXX}` escape sequences.
-Backslashes have no special meaning (they are literal).
--/
-private def escapeSMTStringLitAux (acc : String) (c : Char) : String :=
-  if c == '"' then
-    acc ++ "\"\""
-  else if useXHex c then
-    let hex := String.ofList (Nat.toDigits 16 c.toNat)
-    s!"{acc}\\u\{{hex}}"
-  else
-    acc.push c
-
-def escapeSMTStringLit (s : String) : String :=
-  s.foldl escapeSMTStringLitAux "\"" ++ "\""
 
 end StrataDDM
 end

@@ -543,6 +543,7 @@ def parseCategoryFromDialect
     DeclState.ensureLoaded! s dialects d.name
   -- Run the category-level parser
   let ps := Parser.runCatParser s.tokenTable s.parserMap leanEnv input startPos stopPos cat
+    (stringLiteralDecoder := dialects.stringLiteralDecoder)
   if ps.hasError then
     let errMsg ← ps.allErrors.foldlM (init := "Parse errors:\n") fun msg (pos, stk, err) =>
       let m := Lean.mkErrorMessage input pos stk err

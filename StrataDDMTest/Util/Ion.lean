@@ -35,6 +35,23 @@ def testRoundtrip (v : List (Ion SymbolId)) : Bool :=
 #guard testRoundtrip [.bool false, .bool true]
 #guard testRoundtrip [.int 0, .int 1, .int (-1), .int 256, .int (-256)]
 #guard testRoundtrip [.float 1e-3, .float 3]
+private def compactFloat (bytes : Array UInt8) (expected : Float) : Bool :=
+  match Ion.deserialize ⟨#[0xE0, 0x01, 0x00, 0xEA] ++ bytes⟩ with
+  | .ok #[#[.mk (.float actual)]] => actual == expected
+  | _ => false
+
+-- Ion binary permits positive zero with no representation bytes, IEEE-754
+-- binary32 with four bytes, and binary64 with eight bytes.
+#guard compactFloat #[0x40] 0.0
+#guard compactFloat #[0x44, 0x3F, 0x00, 0x00, 0x00] 0.5
+#guard compactFloat
+  #[0x48, 0x3F, 0xB9, 0x99, 0x99, 0x99, 0x99, 0x99, 0x9A] 0.1
+
+#guard
+  match Ion.deserialize ⟨#[0xE0, 0x01, 0x00, 0xEA, 0x42, 0x00, 0x00]⟩ with
+  | .error (_, msg) => msg == "Float fields must contain 0, 4, or 8 bytes."
+  | _ => false
+
 #guard testRoundtrip [.decimal ⟨0, 0⟩]
 #guard testRoundtrip [.decimal ⟨0, 1⟩]
 #guard testRoundtrip [.decimal ⟨0, -1⟩]

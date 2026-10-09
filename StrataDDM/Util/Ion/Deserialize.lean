@@ -154,6 +154,11 @@ def readString (bytes : @ByteArray) (off : Nat) (limit : Nat) : ReadM String := 
   else
     rfail off s!"Invalid UTF8 string"
 
+def readSingle (bytes : @ByteArray) (off : Nat) (limitp : off + 4 ≤ bytes.size) : Float :=
+  let n := readUInt bytes off (off+4)
+  let v := Float32.ofBits n.toUInt32
+  v.toFloat
+
 def readDouble  (bytes : @ByteArray) (off : Nat) (limitp : off + 8 ≤ bytes.size) : Float :=
   let n := readUInt bytes off (off+8)
   .ofBits n.toUInt64
@@ -389,11 +394,16 @@ def readDoubleToken (bytes : @ByteArray) (ds : DeserializeState bytes.size)
       (td_length : UInt8) (off : Nat) (_ : off < bytes.size)
       : ReadM { s : DeserializeState bytes.size // s.off > off } := do
   let ⟨off2, limit, p⟩ ← readLength bytes (off+1) td_length
-  if h : limit ≠ off2 + 8 then
-    rfail off s!"Only double float fields supported."
-  else
+  if h : limit = off2 then
+    ds.appendValue limit (.float 0.0)
+  else if h : limit = off2 + 4 then
+    let v := readSingle bytes off2 (by grind)
+    ds.appendValue limit (.float v)
+  else if h : limit = off2 + 8 then
     let v := readDouble bytes off2 (by grind)
     ds.appendValue limit (.float v)
+  else
+    rfail off s!"Float fields must contain 0, 4, or 8 bytes."
 
 def readDecimalToken  (bytes : @ByteArray) (ds : DeserializeState bytes.size)
       (td_length : UInt8) (off : Nat) (_ : off < bytes.size)

@@ -305,7 +305,7 @@ def asListOf {α} (name : String) (v : Ion SymbolId) (f : Ion SymbolId → FromI
   | .mk (.list a) => a.mapM f
   | _ => throw s!"{name} expects a list."
 
-def asStruct (type : String) (v : Ion SymbolId) : FromIonM { a : Array (SymbolId × Ion SymbolId) // sizeOf a < sizeOf v } := do
+def asStruct (type : String) (v : Ion SymbolId) : FromIonM { a : Array (SymbolId × Ion SymbolId) // sizeOf a < sizeOf v } :=
   match v with
   | .mk (.struct args) => pure ⟨args, by decreasing_tactic ⟩
   | v => throw s!"{type} expected a struct: {repr v}"
@@ -315,7 +315,7 @@ def asStruct0 (v : Ion SymbolId) : FromIonM (Array (SymbolId × Ion SymbolId)) :
   | .mk (.struct args) => pure args
   | _ => throw "Expected a struct0"
 
-def sizeOfListLowerBound [h : SizeOf α] (l : List α) : sizeOf l > l.length := by
+private theorem sizeOfListLowerBound [h : SizeOf α] (l : List α) : sizeOf l > l.length := by
   match l with
   | [] =>
     simp
@@ -323,7 +323,7 @@ def sizeOfListLowerBound [h : SizeOf α] (l : List α) : sizeOf l > l.length := 
     have p := sizeOfListLowerBound r
     decreasing_tactic
 
-def sizeOfArrayLowerBound [h : SizeOf α] (a : Array α) : sizeOf a ≥ 2 + a.size := by
+private theorem sizeOfArrayLowerBound [h : SizeOf α] (a : Array α) : sizeOf a ≥ 2 + a.size := by
   match a with
   | ⟨l⟩ =>
     have p := sizeOfListLowerBound l
@@ -1000,9 +1000,9 @@ instance : CachedToIon MetadataArg where
   cachedToIon := MetadataArg.toIon
 
 protected def fromIon (v : Ion SymbolId) : FromIonM MetadataArg := do
-  if let .mk (.null _) := v then
+  if let .null _ := v.app then
     return .option none
-  if let .mk (.bool b) := v then
+  if let .bool b := v.app then
     return .bool b
   if let some i := v.asNat? then
     return .num i

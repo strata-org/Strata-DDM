@@ -68,7 +68,7 @@ def mkScopedIdent (subName : Lean.Name) : CommandElabM Ident := do
 
 end Lean
 
-open Lean (mkScopedIdent resolveScopedName)
+open StrataDDM.Lean (mkScopedIdent resolveScopedName)
 
 def arrayLit [Monad m] [Lean.MonadQuotation m] (as : Array Term) : m Term := do
   ``( (#[ $as:term,* ] : Array _) )

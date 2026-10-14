@@ -265,7 +265,7 @@ private def mkTokenAndFixPos (startPos : String.Pos.Raw) (tk : Option Token) : P
   match tk with
   | none    => s.mkErrorAt "token" startPos
   | some tk =>
-    if c.forbiddenTk? == some tk then
+    if c.forbiddenTks.contains tk then
       s.mkErrorAt "forbidden token" startPos
     else
       let leading   := c.mkEmptySubstringAt startPos

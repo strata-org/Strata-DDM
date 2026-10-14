@@ -506,14 +506,13 @@ def parseStrataProgramFromDialect (dialects : LoadedDialects) (dialect : Dialect
   let isTrue mem := (inferInstance : Decidable (dialect ∈ dialects.dialects))
     | throw <| IO.userError s!"Internal {dialect} missing from loaded dialects."
 
-  let strataProgram ←
-    match elabProgramRest dialects leanEnv input dialect mem 0 (normalizePos originalInput.inputString input.endPos) with
-    | .ok program =>
-      pure program
-    | .error errors =>
-      let errMsg ← errors.foldlM (init := "Parse errors:\n") fun msg e =>
-        return s!"{msg}  {e.pos.line}:{e.pos.column}: {← e.data.toString}\n"
-      throw (IO.userError errMsg)
+  match elabProgramRest dialects leanEnv input dialect mem 0 (normalizePos originalInput.inputString input.endPos) with
+  | .ok program =>
+    pure program
+  | .error errors =>
+    let errMsg ← errors.foldlM (init := "Parse errors:\n") fun msg e =>
+      return s!"{msg}  {e.pos.line}:{e.pos.column}: {← e.data.toString}\n"
+    throw (IO.userError errMsg)
 
 /--
 Parse a single syntax category from a loaded dialect set.

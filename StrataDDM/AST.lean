@@ -87,7 +87,7 @@ Return true if this corresponds to builtin category `Init.Type`
 -/
 def isType {α} (c : SyntaxCatF α) : Bool := c.name == q`Init.Type
 
-def sizeOf_spec {α} [SizeOf α] (op : SyntaxCatF α) : sizeOf op = 1 + sizeOf op.ann + sizeOf op.name + sizeOf op.args :=
+theorem sizeOf_spec {α} [SizeOf α] (op : SyntaxCatF α) : sizeOf op = 1 + sizeOf op.ann + sizeOf op.name + sizeOf op.args :=
   match op with
   | { ann, name, args } => by simp
 
@@ -1100,7 +1100,7 @@ def parseNewBindings (md : Metadata) (argDecls : ArgDecls) : Array (BindingSpec 
             | return panic! "Invalid name index"
           let nameIndex := ⟨nameIndex, nameP⟩
           checkNameIndexIsIdent argDecls nameIndex
-          let argsIndex : DebruijnIndex argDecls.size ←
+          let argsIndex : Option (DebruijnIndex argDecls.size) ←
                 match mArgsArg with
                 | none => pure none
                 | some (.catbvar idx) =>
@@ -1302,7 +1302,7 @@ instance {α} : ToString (Collection α) where
 private inductive Mem {α} (c : Collection α) (nm : String) : Prop
 | intro : (h : nm ∈ c.cache) → (r : α) → c.proj (c.cache[nm]) = some r → Mem c nm
 
-private def Mem.inCache {α} {c : Collection α} {nm} : Mem c nm → nm ∈ c.cache
+private theorem Mem.inCache {α} {c : Collection α} {nm} : Mem c nm → nm ∈ c.cache
 | .intro h _ _ => h
 
 instance {α} : Membership String (Collection α) where

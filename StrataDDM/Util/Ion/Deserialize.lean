@@ -26,13 +26,22 @@ inductive Step (α : Type u) (β : Type v) where
 
 abbrev ReadM := Except (Nat × String)
 
-abbrev SReadM (off : Nat) (α : Type) := ReadM (α × { new : Nat // new > off })
+/--
+Result of a read that started at byte offset `off`: the decoded value paired with
+the offset just past the bytes consumed. The bound `new > off` records that at least
+one byte was consumed, which callers use to prove termination of their read loops.
+
+Readers return `ReadM (Progress off α)` rather than folding the result into a monad
+alias so that `do` notation sees `ReadM` as the monad and `Progress off α` as the
+result type.
+-/
+abbrev Progress (off : Nat) (α : Type) := α × { new : Nat // new > off }
 
 @[inline]
 def rfail {α} (off : Nat) (msg : String) : ReadM α := .error (off, msg)
 
 @[specialize]
-def readWhileAux {α β} (bytes : @ByteArray) (base : Nat) (init : α) (off : Nat) (act : α → UInt8 → Step α β) (p : off ≥ base := by omega) : SReadM base β :=
+def readWhileAux {α β} (bytes : @ByteArray) (base : Nat) (init : α) (off : Nat) (act : α → UInt8 → Step α β) (p : off ≥ base := by omega) : ReadM (Progress base β) :=
   if p : off < bytes.size then
     match act init bytes[off] with
     | .done r => .ok (r, ⟨off+1, by omega⟩)
@@ -41,7 +50,7 @@ def readWhileAux {α β} (bytes : @ByteArray) (base : Nat) (init : α) (off : Na
     rfail off "Unexpected end of file"
 
 @[inline]
-def readWhile {α β} (bytes : @ByteArray) (init : α) (base : Nat) (p : base < bytes.size) (act : α → UInt8 → Step α β) : SReadM base β := do
+def readWhile {α β} (bytes : @ByteArray) (init : α) (base : Nat) (p : base < bytes.size) (act : α → UInt8 → Step α β) : ReadM (Progress base β) :=
   match act init bytes[base] with
   | .done r =>
     .ok (r, ⟨base+1, by omega⟩)
@@ -58,7 +67,7 @@ def readUpTo {α} (bytes : @ByteArray) (init : α) (off : Nat) (limit : Nat) (li
     init
 
 @[inline]
-def readVarUInt (bytes : @ByteArray) (off : Nat) (p : off < bytes.size := by omega) : SReadM off Nat :=
+def readVarUInt (bytes : @ByteArray) (off : Nat) (p : off < bytes.size := by omega) : ReadM (Progress off Nat) :=
   let b := bytes[off]
   if b &&& 0x80 = 0x80 then
     let v := b &&& 0x7f
@@ -85,12 +94,12 @@ def readVarUInt (bytes : @ByteArray) (off : Nat) (p : off < bytes.size := by ome
             .yield v
 
 @[inline]
-def readVarUInt' (bytes : @ByteArray) (off : Nat) : SReadM off Nat := do
+def readVarUInt' (bytes : @ByteArray) (off : Nat) : ReadM (Progress off Nat) := do
   let .isTrue p := decideProp (off < bytes.size)
     | rfail off s!"Unexpected end of file"
   readVarUInt bytes off
 
-def readVarInt (bytes : @ByteArray) (off : Nat) (p : off < bytes.size := by omega) : SReadM off Int := do
+def readVarInt (bytes : @ByteArray) (off : Nat) (p : off < bytes.size := by omega) : ReadM (Progress off Int) := do
   let b := bytes[off]
   let isNeg := b &&& 0x40 = 0x40
   let v := (b &&& 0x3f).toNat
@@ -255,44 +264,45 @@ partial def popFinishedValues {size} {base} (ds : DeserializeState size) (off : 
   if h : ds.tags.size = 0 then
     return ⟨{ds with off := off }, p⟩
   else do
-    let { prev, symbols, values, tags, value_indices, limits, .. } := ds
-    have _ : NeZero tags.size := ⟨h⟩
-    let ⟨limit, _⟩ := limits.back
-    if off < limit then
-      return ⟨{ds with off := off }, p⟩
-    let value_index := value_indices.back
-    let (symbols, v) ←
-      match tags.back with
-      | .list =>
-        let a := values.extract value_index
-        pure <| (symbols, Ion.mk (.list a))
-      | .sexp =>
-        let a := values.extract value_index
-        pure (symbols, .mk <| (.sexp a))
-      | .struct =>
-        let cnt := values.size - value_index
-        let .isTrue symp := decideProp (symbols.size ≥ cnt)
-          | rfail off "Bad symbols"
-        let base := symbols.size - cnt
-        let v := Array.ofFn fun (i : Fin cnt) => (symbols[base + i.val], values[value_index + i])
-        pure (symbols.shrink base, .mk <| .struct v)
-      | .ann ann =>
-        let a := values.extract value_index
-        if p : a.size = 1 then
-          pure (symbols, .annotation ann a[0])
-        else
-          rfail off s!"Annotation without value"
-    let values := values.shrink value_index
-    let ds := {
-      prev
-      symbols
-      values := values.push v
-      tags := tags.pop
-      value_indices := value_indices.pop.cast (by grind)
-      limits := limits.pop.cast (by grind)
-      off
-    }
-    popFinishedValues ds off p
+    match (dependent := true) ds with
+    | { prev, symbols, values, tags, value_indices, limits, .. } =>
+      have _ : NeZero tags.size := ⟨h⟩
+      let ⟨limit, _⟩ := limits.back
+      if off < limit then
+        return ⟨{ds with off := off }, p⟩
+      let value_index := value_indices.back
+      let (symbols, v) ←
+        match tags.back with
+        | .list =>
+          let a := values.extract value_index
+          pure <| (symbols, Ion.mk (.list a))
+        | .sexp =>
+          let a := values.extract value_index
+          pure (symbols, .mk <| (.sexp a))
+        | .struct =>
+          let cnt := values.size - value_index
+          let .isTrue symp := decideProp (symbols.size ≥ cnt)
+            | rfail off "Bad symbols"
+          let base := symbols.size - cnt
+          let v := Array.ofFn fun (i : Fin cnt) => (symbols[base + i.val], values[value_index + i])
+          pure (symbols.shrink base, .mk <| .struct v)
+        | .ann ann =>
+          let a := values.extract value_index
+          if p : a.size = 1 then
+            pure (symbols, .annotation ann a[0])
+          else
+            rfail off s!"Annotation without value"
+      let values := values.shrink value_index
+      let ds := {
+        prev
+        symbols
+        values := values.push v
+        tags := tags.pop
+        value_indices := value_indices.pop.cast (by grind)
+        limits := limits.pop.cast (by grind)
+        off
+      }
+      popFinishedValues ds off p
 
 def startNew {size} (ds : DeserializeState size) (_ : ds.tags.size = 0) : DeserializeState size :=
   assert! ds.symbols.size = 0

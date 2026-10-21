@@ -56,3 +56,7 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 ## License
 
 This project is licensed under the Apache-2.0 License.
+
+## Acknowledgments
+
+Thanks to Joe Hendrix ([joehendrix](https://github.com/joehendrix)) for driving the main development of this package from its early stages.

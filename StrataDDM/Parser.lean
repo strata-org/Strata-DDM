@@ -973,11 +973,9 @@ private def prependSyntaxDefAtomParser (ctx : ParsingContext) (argDecls : ArgDec
     | .error c =>
       panic! s!"Category '{eformat c}' is not supported."
   | .str l =>
-    let l := l.trimAscii.toString
-    if l.isEmpty then
-      r
-    else
-      symbolNoAntiquot l >> r
+    match SyntaxDefAtom.tokenOf? l with
+    | none => r
+    | some t => symbolNoAntiquot t >> r
   | .indent _ p =>
     p.attach.foldr (init := r) fun ⟨e, _⟩ r => prependSyntaxDefAtomParser ctx argDecls e r
 

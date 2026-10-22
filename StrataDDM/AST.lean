@@ -737,6 +737,12 @@ inductive SyntaxDefAtom
 | indent (n : Nat) (args : Array SyntaxDefAtom)
 deriving BEq, Inhabited, Repr
 
+/-- The token the parser reads for a literal atom `lit`: its text trimmed, or `none` if it is
+only white space. -/
+def SyntaxDefAtom.tokenOf? (lit : String) : Option String :=
+  let t := lit.trimAscii.toString
+  if t.isEmpty then none else some t
+
 /--
 Syntax definition for an operator or function.
 -/

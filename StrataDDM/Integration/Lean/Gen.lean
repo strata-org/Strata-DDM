@@ -1202,20 +1202,43 @@ where
 end
 
 /--
+Generates `args[i]` with an explicit bounds proof built from
+`p : args.size = n`.  Leaving the proof to `get_elem_tactic` makes large
+dialects (hundreds of accesses) noticeably slower to elaborate.
+-/
+def mkArgAccess (argsVar sizeVar : Ident) (i : Nat) : GenM Term :=
+  ``($argsVar[$(quote i)]'(Nat.lt_of_lt_of_eq (Nat.le_of_ble_eq_true rfl)
+      (Eq.symm $sizeVar)))
+
+/--
+Generates the do-notation statement that runs `checkExpr` and binds the
+resulting `args.size = n` proof, returning the statement and the proof
+identifier.
+-/
+def bindArgCountProof (checkExpr : Term)
+    : GenM (TSyntax ``doSeqItem × Ident) := do
+  let (pc, pi) ← genFreshIdentPair "p"
+  let stmt ← `(doSeqItem| let .up $pc ← $checkExpr:term)
+  return (stmt, pi)
+
+/--
 Generates code to parse arguments from an ArgF array, returning the parsed
-identifiers and the do-notation statements that bind them.
+identifiers and the do-notation statements that bind them.  The statements
+start by running `checkExpr`, which must establish `args.size = n`.
 -/
 def ofAstArgs (argDecls : Array GenArgDecl) (argsVar : Ident)
-    : GenM (Array Ident × Array (TSyntax ``doSeqItem)) := do
+    (checkExpr : Term) : GenM (Array Ident × Array (TSyntax ``doSeqItem)) := do
+  let (checkStmt, sizeVar) ← bindArgCountProof checkExpr
   let argCount := argDecls.size
   let args ← Array.ofFnM (n := argCount) fun ⟨i, _isLt⟩  => do
     let arg := argDecls[i]
     let (vc, vi) ← genFreshIdentPair <| arg.name ++ "_bind"
-    let av ← ``($argsVar[$(quote i)])
+    let av ← mkArgAccess argsVar sizeVar i
     let rhs ← genOfAstArgTerm arg.name arg.cat arg.addAnn av
     let stmt ← `(doSeqItem| let $vc ← $rhs:term)
     return (vi, stmt)
-  return args.unzip
+  let (vars, stmts) := args.unzip
+  return (vars, #[checkStmt] ++ stmts)
 
 /--
 Generates a pattern match case for the name index lookup in ofAst.
@@ -1240,11 +1263,10 @@ def ofAstExprMatchRhs (cat : QualifiedIdent) (annI argsVar : Ident)
     | return panic! s!"Missing name for {op.leanName}"
   let argDecls := op.argDecls
   let argCount := argDecls.size
-  let (parsedArgs, stmts) ← ofAstArgs argDecls argsVar
   let checkExpr ←
     ``(OfAstM.checkArgCount $(quote nm) $(quote argCount) $(argsVar))
+  let (parsedArgs, stmts) ← ofAstArgs argDecls argsVar checkExpr
   `(do
-    let .up p ← $checkExpr:term
     $stmts:doSeqItem*
     pure ($ctorIdent $annI $parsedArgs:term*))
 
@@ -1260,20 +1282,24 @@ def ofAstExprMatch (nameIndexMap : Std.HashMap QualifiedIdent Nat)
 
 /--
 Generates code to parse type arguments (which are always Init.Type) from
-an array, recursively calling the Type ofAst function.
+an array, recursively calling the Type ofAst function.  The statements start
+by running `checkExpr`, which must establish `args.size = n`.
 -/
 def ofAstTypeArgs (argDecls : Array GenArgDecl) (argsVar : Ident)
-    : GenM (Array Ident × Array (TSyntax ``doSeqItem)) := do
+    (checkExpr : Term) : GenM (Array Ident × Array (TSyntax ``doSeqItem)) := do
+  let (checkStmt, sizeVar) ← bindArgCountProof checkExpr
   let argCount := argDecls.size
   let ofAst ← ofAstIdentM q`Init.Type
   let args ← Array.ofFnM (n := argCount) fun ⟨i, _isLt⟩  => do
     let arg := argDecls[i]
     let v ← genFreshLeanName arg.name
     let src := (←read).src
-    let rhs ← ``($ofAst $argsVar[$(quote i)])
+    let av ← mkArgAccess argsVar sizeVar i
+    let rhs ← ``($ofAst $av)
     let stmt ← `(doSeqItem| let $(mkIdentFrom src v true) ← $rhs:term)
     return (mkIdentFrom src v, stmt)
-  return args.unzip
+  let (vars, stmts) := args.unzip
+  return (vars, #[checkStmt] ++ stmts)
 
 /--
 Generates the right-hand side for parsing an Init.Type constructor,
@@ -1283,11 +1309,10 @@ def ofAstTypeMatchRhs (cat : QualifiedIdent) (ann argsVar : Ident)
     (op : DefaultCtor) : GenM Term := do
   let ctorIdent ← getCategoryOpIdent cat op.leanName
   let argDecls := op.argDecls
-  let (parsedArgs, stmts) ← ofAstTypeArgs argDecls argsVar
   let checkExpr ←
     ``(OfAstM.checkTypeArgCount $(quote argDecls.size) $(argsVar))
+  let (parsedArgs, stmts) ← ofAstTypeArgs argDecls argsVar checkExpr
   `(do
-    let .up p ← $checkExpr:term
     $stmts:doSeqItem*
     pure <| $ctorIdent $ann $parsedArgs:term*)
 
@@ -1304,9 +1329,8 @@ def ofAstOpMatchRhs (cat : QualifiedIdent) (annI argsVar : Ident)
   let argCount := argDecls.size
   let checkExpr ←
     ``(OfAstM.checkArgCount $(quote name) $(quote argCount) $argsVar)
-  let (parsedArgs, stmts) ← ofAstArgs argDecls argsVar
+  let (parsedArgs, stmts) ← ofAstArgs argDecls argsVar checkExpr
   `(do
-    let .up p ← $checkExpr:term
     $stmts:doSeqItem*
     return $ctorIdent $annI $parsedArgs:term*)
 

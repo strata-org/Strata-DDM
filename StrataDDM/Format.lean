@@ -301,6 +301,14 @@ private def explicit : FormatContext where
 def withArgFormatMode (ctx : FormatContext) (mode : Option FormatMode) : FormatContext :=
   { ctx with argFormatMode := mode }
 
+/-- Set the global context, keeping everything else. A printer that formats many programs with
+the same dialects can build its context once with `ofDialects`, which collects the dialects'
+keywords when `quoteKeywords` is set, and only replace the global context for each program.
+Use it only for programs over the dialects `ctx` was built from: nothing checks this, and a
+context built from other dialects would quote names by the wrong keywords. -/
+def withGlobalContext (ctx : FormatContext) (globalContext : GlobalContext) : FormatContext :=
+  { ctx with globalContext }
+
 private def fvarName (ctx : FormatContext) (idx : FreeVarIndex) : String :=
   if let some name := ctx.globalContext.nameOf? idx then
     name
@@ -319,6 +327,14 @@ protected def ofDialects (dialects : DialectMap) (globalContext : GlobalContext 
     some op
   globalContext := globalContext
   keywords := if opts.quoteKeywords then dialects.keywords else {}
+
+/-- A context built from the dialects and given a global context is the context built from the
+dialects with that global context: only the global context depends on the program.  It is stated
+here rather than in a separate file because its proof unfolds the private fields of
+`FormatContext`. -/
+theorem ofDialects_withGlobalContext (d : DialectMap) (g g' : GlobalContext) (o : FormatOptions) :
+    (FormatContext.ofDialects d g o).withGlobalContext g' = FormatContext.ofDialects d g' o := by
+  rfl
 
 end FormatContext
 

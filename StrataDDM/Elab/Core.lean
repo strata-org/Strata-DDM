@@ -1107,13 +1107,32 @@ private def resultContext {argc : Nat}
       | return panic! "Invalid index"
     trees[idx].resultContext
 
+/-- Reports a `choice` node, where the input parses in two or more ways, by naming the
+kinds of the alternatives (usually op names), sorted and without repeats. It does not
+print the alternatives: they share their subtrees, so a tree with `n` nested ambiguities
+prints `2^n` leaves, and laying out that text takes about 4x longer per level. -/
+private def logAmbiguity (loc : SourceRange) (stx : Syntax) : ElabM Unit :=
+  let alts := (stx.getArgs.map fun alt => toString alt.getKind).qsort (· < ·)
+  logError loc s!"Parsing ambiguity: the input parses as each of {alts.toList.eraseDups}"
+
+/-- Whether `stx` is a `choice` node, where the input parses in two or more ways. Every
+elaborator of an op or of a function application checks this before it looks up the op of
+`stx`, which a `choice` node does not have. Given a location, it reports the ambiguity
+there; the pre-registration passes give none, because the same node reaches
+`elabOperation` afterwards, which reports it once. -/
+private def isAmbiguous (stx : Syntax) (reportAt : Option SourceRange) : ElabM Bool := do
+  if stx.getKind != `choice then
+    return false
+  if let some loc := reportAt then
+    logAmbiguity loc stx
+  return true
+
 mutual
 
 partial def elabOperation (tctx : TypingContext) (stx : Syntax) : ElabM Tree := do
   let some loc := mkSourceRange? stx
     | panic! s!"elabOperation missing source location {repr stx}"
-  if stx.getKind = `choice then
-    logError loc s!"Parsing ambiguity {stx}"
+  if ← isAmbiguous stx loc then
     return default
   let some i := qualIdentKind stx
     | return panic! s!"Unknown command {stx.getKind}"
@@ -1361,6 +1380,8 @@ available when elaborating bodies in Phase 2.
 partial def extractFunctionInfo (gctx0 : GlobalContext) (child : Syntax) : ElabM GlobalContext := do
   let dialects := (← read).dialects
   let syntaxElabs := (← read).syntaxElabs
+  if ← isAmbiguous child none then
+    return gctx0
   let some childIdent := qualIdentKind child
     | return panic! s!"Unknown command {child.getKind}"
   let some childLoc := mkSourceRange? child
@@ -1477,6 +1498,8 @@ updated `TypingContext` with the new type registered.
 partial def extractDatatypeInfo (gctx0 : GlobalContext) (child : Syntax) : ElabM GlobalContext := do
   let dialects := (← read).dialects
   let syntaxElabs := (← read).syntaxElabs
+  if ← isAmbiguous child none then
+    return gctx0
   let some childIdent := qualIdentKind child
     | return panic! s!"Unknown command {child.getKind}"
 
@@ -1775,6 +1798,8 @@ partial def elabExpr (tctx : TypingContext) (stx : Syntax) : ElabM Tree := do
   | _ => do
     let some loc := mkSourceRange? stx
       | panic! "evalExpr missing source location"
+    if ← isAmbiguous stx loc then
+      return default
     let einfo : ElabInfo := { loc := loc, inputCtx := tctx }
     let some i := qualIdentKind stx
       | return panic! s!"Unknown expression {stx}"

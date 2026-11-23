@@ -88,14 +88,29 @@ def TokenTable.addParser (tt : TokenTable) (p : Parser) : TokenTable :=
   let tkns := p.info.collectTokens []
   tkns.foldl (λtt t => tt.insert t t) tt
 
-private def nodeFn (n : SyntaxNodeKind) (p : ParserFn) : ParserFn := fun c s =>
-  let iniSz := s.stackSize
-  let s     := p c s
-  s.mkNode n iniSz
-
 private def emptySourceInfo (c : ParserContext) (pos : String.Pos.Raw) : SourceInfo :=
   let empty := c.mkEmptySubstringAt pos
   .original empty pos empty pos
+
+/-- Gives the op node on top of the stack, which `node` or `trailingNode` has just built
+without info, its source range and the whitespace around it (`rangeInfo?`), so that the
+elaborator's range requests stop at the node instead of walking down its children, which
+were stamped when they were built. The stamp keeps the trailing whitespace of the node's
+last token, from which `mkErrorMessage` places a parse error (`lastTrailing`). -/
+private def stampFn : ParserFn := fun _ s =>
+  if s.hasError then s else
+  match s.stxStack.back with
+  | n@(.node .none k args) =>
+    match StrataDDM.rangeInfo? n with
+    | some info => s.popSyntax.pushSyntax (.node info k args)
+    | none => s
+  | _ => s
+
+/-- Parses `p` and wraps what it pushed in a node of kind `n`, stamped (`stampFn`). -/
+private def nodeFn (n : SyntaxNodeKind) (p : ParserFn) : ParserFn := fun c s =>
+  let iniSz := s.stackSize
+  let s     := p c s
+  stampFn c (s.mkNode n iniSz)
 
 private def optionalFn (p : ParserFn) : ParserFn := fun c s =>
   let iniSz  := s.stackSize
@@ -176,7 +191,7 @@ private def trailingNode (n : SyntaxNodeKind) (prec minLhsPrec : Nat) (p : Parse
           if s.hasError then
             s
           else
-            { s with lhsPrec := prec }
+            { stampFn c s with lhsPrec := prec }
   }
 
 variable (pushMissingOnError : Bool) in
@@ -1027,26 +1042,15 @@ def opSyntaxParser (ctx : ParsingContext)
     | .isLeading [] =>
       let fn (c : ParserContext) (s : ParserState) : ParserState :=
         s.pushSyntax (.atom (emptySourceInfo c s.pos) "")
-      -- An empty-template op (`op else0 () : Else => ;`) has no concrete syntax, so
-      -- `node`'s `mkNode` stamps the wrapping node with `SourceInfo.none`. That node is
-      -- zero-width but carries no *own* range, so a parent computing its end descends
-      -- into it and adopts the child atom's position — which sits past the preceding
-      -- token's consumed trailing trivia (e.g. on the next line for `if c then t <else>`),
-      -- overshooting the parent's range. Restamp the node with a zero-width
-      -- `emptySourceInfo`, exactly as `optionalFn`/`sepByParser`/`manyParser` do for their
-      -- empty results, so it carries its own range: `sourceLocEnd`'s O(1) `ownRange` check
-      -- then sees a zero-width span and skips it. The op's *own* range is `{pos, pos}`,
-      -- read from its own info; `isNone` stays false.
-      let restamp (c : ParserContext) (s : ParserState) : ParserState :=
-        if s.hasError then s else
-          match s.stxStack.back with
-          | .node .none k args => s.popSyntax.pushSyntax (.node (emptySourceInfo c s.pos) k args)
-          | _ => s
+      -- An empty-template op (`op else0 () : Else => ;`) has no concrete syntax; the empty
+      -- atom at the current position gives its node a zero-width range there (`stampFn`),
+      -- which a parent skips when it computes its end, as it skips the empty results of
+      -- `optionalFn`, `sepByParser` and `manyParser`.
       pure {
         category,
         outerPrec := prec,
         isLeading := true,
-        parser := node n { fn := fn } >> { fn := restamp } >> setLhsPrec prec
+        parser := node n { fn := fn } >> setLhsPrec prec
       }
     | .isLeading args =>
       let p := liftToKind ctx args argDecls

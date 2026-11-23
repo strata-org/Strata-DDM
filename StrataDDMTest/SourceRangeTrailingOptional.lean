@@ -27,9 +27,10 @@ Targs`) is nested as the last child of `outer`, so `outer`'s end descends throug
 later zero-width position. The empty-template case is the analogue of an else-less
 `if`: `wrap`'s last child is a `Tail` whose absent alternative is the empty-template
 `tailEmpty`, so `wrap`'s end must resolve to the end of `wrap foo`. Both stamp their
-own zero-width range. The third case is a RANGELESS op that is a zero-width subtree
-(`wrapOptOnly`): it carries no own range, so its emptiness is only visible by computing
-its range — the `none`-branch skip in `lastSpanningEnd`.
+own zero-width range. The third case is an op that is a zero-width subtree
+(`wrapOptOnly`): the parser stamps it with its absent optional's zero-width range; on a
+tree without that stamp, its emptiness is only visible by computing its range (the
+`none`-branch skip in `lastSpanningEnd`, which the hand-built trees below check).
 
 Each case asserts the parsed range two ways: `markSpan` renders it *in the source
 text* (`⟦…⟧` around the covered characters, or a caret `‸` for a zero-width point)
@@ -53,26 +54,24 @@ op newExpr (name : Ident, ta : Option Targs) : TExpr => "new " name ta;
 // descends into it — and thus into `newExpr`'s absent trailing optional.
 op outer (e : TExpr) : TExpr => "outer " e;
 // A second zero-width shape: an *empty-template* op (`=> ;`, no concrete syntax) —
-// the `Core.else0`/`Dyn.no_else`/`Core.nilInvariants` shape. `mkNode` stamps such an
-// op's node `SourceInfo.none`; the parser then restamps it with its own zero-width
-// range (as it does an absent optional), so the end scan's own-range check can skip
-// it. `tailEmpty` is the absent alternative of `Tail`.
+// the `Core.else0`/`Dyn.no_else`/`Core.nilInvariants` shape. The parser gives such an
+// op's node its own zero-width range (as it does an absent optional), so the end scan's
+// own-range check can skip it. `tailEmpty` is the absent alternative of `Tail`.
 op tailEmpty (         ) : Tail  => ;
 op tailFull  (x : Ident) : Tail  => "tail " x;
 // `t` (a `Tail`) is `wrap`'s final syntactic element, so `wrap`'s end comes from it:
 // the end of `tail x` when present, and — skipping `tailEmpty`'s zero-width node — the
 // end of the real content when the `Tail` is absent.
 op wrap (a : Ident, t : Tail) : TExpr => "wrap " a t;
-// A RANGELESS zero-width subtree: an op whose only surface element is an absent
-// optional. Not an empty-template op (`.isLeading []`), so the parser does not restamp
-// it — its node stays `SourceInfo.none` (rangeless) with a zero-width child. As a
-// parent's last child it is reached through `lastSpanningEnd`'s `none` branch, whose
-// computed-range zero-width check must skip it (the own-range check cannot: no own range).
+// A zero-width subtree: an op whose only surface element is an absent optional. The
+// parser stamps its node with the optional's zero-width range, so as a parent's last
+// child the own-range check skips it; without the stamp, `lastSpanningEnd`'s `none`
+// branch would have to recognize it by its computed range.
 category JOpt;
 op optOnly (ta : Option Targs) : JOpt => ta;
 op wrapOptOnly (a : Ident, j : JOpt) : TExpr => "wrapj " a j;
-// A rangeless op with REAL content before its absent optional: computed end > start, so
-// it must NOT be skipped. Guards the `none`-branch check against over-skipping.
+// An op with REAL content before its absent optional: its range is not empty, so it must
+// NOT be skipped. Guards the skip against over-skipping.
 op identThenOpt (x : Ident, ta : Option Targs) : JOpt => x ta;
 op wrapIdentOpt (a : Ident, j : JOpt) : TExpr => "wrapk " a j;
 // A LEADING absent optional: `ta` is the op's FIRST template element, before the real
@@ -214,6 +213,16 @@ private def rangeless (children : Array Syntax) : Syntax := .node .none `op chil
 #guard_msgs in
 #eval (StrataDDM.sourceLocEnd (rangeless #[spanning 0 5, rangeless #[]])).map (·.byteIdx)
 
+-- `none` branch, `some e` arm after a spanning sibling: a rangeless child whose computed
+-- range is zero-width (an op over an absent optional, without its stamp) is skipped ...
+/-- info: some 5 -/
+#guard_msgs in
+#eval (StrataDDM.sourceLocEnd (rangeless #[spanning 0 5, rangeless #[spanning 7 7]])).map (·.byteIdx)
+-- ... and one whose computed range covers text is kept (no over-skip).
+/-- info: some 7 -/
+#guard_msgs in
+#eval (StrataDDM.sourceLocEnd (rangeless #[spanning 0 5, rangeless #[spanning 6 7]])).map (·.byteIdx)
+
 -- Empty-template op (`tailEmpty`, the `else0`/`no_else`/`nilInvariants` shape) nested
 -- as `wrap`'s last child, with the `Tail` alternative absent. The `tailEmpty` node sits
 -- (zero-width) past the consumed newline on line 2; the end scan skips it via its
@@ -254,12 +263,10 @@ private def wrapTail (op : Operation) : Option Operation :=
 #guard_msgs in
 #eval (stmtArgOp wrapEmpty.program).bind wrapTail |>.map (fun t => (spanLen t, t.ann.isNone))
 
--- A rangeless op that is a zero-width subtree, as `wrapOptOnly`'s last child. Its end
--- is computed (no own range), so `lastSpanningEnd`'s `none` branch must recognize the
--- computed range as zero-width and skip it — `wrapOptOnly`'s range covers `wrapj foo`,
--- not the absent optional's position on the next line. (Skipping only stamped
--- zero-width children would miss this; the `none`-branch computed-range check is required.)
-private def wrapRangeless : SourcedProgram :=
+-- An op that is a zero-width subtree, as `wrapOptOnly`'s last child: its zero-width
+-- range must be skipped, so `wrapOptOnly`'s range covers `wrapj foo`, not the absent
+-- optional's position on the next line.
+private def wrapZeroWidth : SourcedProgram :=
   #strata
   program TrailingOpt;
   stmt wrapj foo
@@ -269,15 +276,14 @@ private def wrapRangeless : SourcedProgram :=
   stmt ⟦wrapj foo⟧
   stmt outer new Bar -/
 #guard_msgs in
-#eval IO.println (markFirst wrapRangeless)
+#eval IO.println (markFirst wrapZeroWidth)
 /-- info: some 9 -/
 #guard_msgs in
-#eval (stmtArgOp wrapRangeless.program).map spanLen
+#eval (stmtArgOp wrapZeroWidth.program).map spanLen
 
 -- The over-skip guard: `identThenOpt x` (real content, then an absent optional) is
--- rangeless but NOT zero-width — computed end > start — so the `none`-branch check must
--- keep it. `wrapIdentOpt`'s range covers `wrapk foo x`, confirming the skip drops only
--- genuinely empty subtrees.
+-- NOT zero-width, so the skip must keep it. `wrapIdentOpt`'s range covers `wrapk foo x`,
+-- confirming the skip drops only genuinely empty subtrees.
 private def wrapIdentThenOpt : SourcedProgram :=
   #strata
   program TrailingOpt;

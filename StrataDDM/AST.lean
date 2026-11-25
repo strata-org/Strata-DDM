@@ -1981,6 +1981,18 @@ def ensureDefined (ctx : GlobalContext) (v : Var) (k : GlobalKind) : GlobalConte
   else
     ctx.define v k h
 
+/--
+Like `defineChecked`, but an error also returns `ctx`, so callers can continue
+from it without keeping their own reference (which would force a copy).
+-/
+private def defineCheckedKeep (ctx : GlobalContext) (v : Var) (k : GlobalKind) (preRegistered : Bool) :
+      Except (String × GlobalContext) GlobalContext :=
+  match instDecidableMem v ctx, preRegistered with
+  | .isTrue _, true => .ok ctx
+  | .isTrue _, false => .error (s!"'{v}' already defined", ctx)
+  | .isFalse h, false => .ok (ctx.define v k h)
+  | .isFalse _, true => .error (s!"pre-registered '{v}' not found", ctx)
+
 /-- Define a symbol, with behavior controlled by `preRegistered`:
 - `preRegistered = true`: the name is expected to already exist (was
   pre-registered). Returns the context unchanged, or an error if missing.
@@ -1988,11 +2000,16 @@ def ensureDefined (ctx : GlobalContext) (v : Var) (k : GlobalKind) : GlobalConte
   an error if already present. -/
 def defineChecked (ctx : GlobalContext) (v : Var) (k : GlobalKind) (preRegistered : Bool) :
       Except String GlobalContext :=
-  match instDecidableMem v ctx, preRegistered with
-  | .isTrue _, true => .ok ctx
-  | .isTrue _, false => .error s!"'{v}' already defined"
-  | .isFalse h, false => .ok (ctx.define v k h)
-  | .isFalse _, true => .error s!"pre-registered '{v}' not found"
+  (defineCheckedKeep ctx v k preRegistered).mapError (·.1)
+
+/--
+Removes every variable defined after the first `n`, restoring the context as
+it was when it had `n` variables (`define` only ever appends).
+-/
+private def truncate (ctx : GlobalContext) (n : Nat) : GlobalContext :=
+  let { nameMap, vars } := ctx
+  let nameMap := vars.foldl (start := n) (init := nameMap) fun m (v, _) => m.erase v
+  { nameMap, vars := vars.shrink n }
 
 /-- Return the index of the variable with the given name. -/
 def findIndex? (ctx : GlobalContext) (v : Var) : Option FreeVarIndex := ctx.nameMap.get? v
@@ -2020,8 +2037,16 @@ private abbrev TemplateExpandM := StateM TemplateExpandState
 
 namespace TemplateExpandM
 
+/--
+Returns the number of errors together with the state. Not inlined, so the count
+is computed before `act` consumes the state and `errors` is not shared while
+`act` logs to it.
+-/
+@[noinline] private def errorCount (s : TemplateExpandState) : Nat × TemplateExpandState :=
+  (s.errors.size, s)
+
 private def runChecked (act : TemplateExpandM Unit) : TemplateExpandM Bool := do
-  let oldCount := (←get).errors.size
+  let oldCount ← modifyGet errorCount
   act
   let newCount := (←get).errors.size
   return oldCount = newCount
@@ -2184,7 +2209,7 @@ private def addDatatypeBindings
     {argDecls : ArgDecls}
     (b : DatatypeBindingSpec argDecls)
     (args : Vector Arg argDecls.size)
-    : Except String GlobalContext := do
+    : Except (String × GlobalContext) GlobalContext := do
 
   let datatypeName :=
     match args[b.nameIndex.toLevel] with
@@ -2202,13 +2227,13 @@ private def addDatatypeBindings
   -- When preRegistered, the type was already added by preRegisterTypeName;
   -- otherwise it must be fresh.
   let k := GlobalKind.type typeParams.toList none
-  let gctx ← gctx.defineChecked datatypeName k preRegistered
+  let gctx ← gctx.defineCheckedKeep datatypeName k preRegistered
   let datatypeIndex := gctx.findIndex? datatypeName |>.getD (gctx.vars.size - 1)
   let datatypeType := mkDatatypeTypeRef src datatypeIndex typeParams
 
   -- Step 2: Add constructor signatures and expand function templates
   let constrArg := args[b.constructorsIndex.toLevel]
-  let constructorInfo ← extractConstructorInfo dialects constrArg
+  let constructorInfo ← (extractConstructorInfo dialects constrArg).mapError (·, gctx)
   -- Errors from template expansion are reported during elaboration
   -- (evalBindingSpec); here we just take the updated context.
   let (gctx, _) := expandFunctionTemplates dialectName src
@@ -2222,8 +2247,9 @@ pass. Used by operations annotated with `@[preRegisterTypes]` (e.g., mutual
 blocks) so that forward references between sibling datatypes resolve correctly.
 Names must be fresh — returns an error if the name is already defined.
 -/
-private def preRegisterType (dialects : DialectMap) (acc : Except String GlobalContext) (l : SourceRange)
-    {argDecls} (b : BindingSpec argDecls) (args : Vector Arg argDecls.size) : Except String GlobalContext := do
+private def preRegisterType (dialects : DialectMap) (acc : Except (String × GlobalContext) GlobalContext) (l : SourceRange)
+    {argDecls} (b : BindingSpec argDecls) (args : Vector Arg argDecls.size) :
+    Except (String × GlobalContext) GlobalContext := do
   let gctx ← acc
   match b with
   | .datatype _ | .type _ =>
@@ -2235,15 +2261,16 @@ private def preRegisterType (dialects : DialectMap) (acc : Except String GlobalC
     -- Names must be fresh: this is the pre-registration pass.
     | some kind =>
       if h : name ∈ gctx then
-        .error s!"'{name}' already defined"
+        .error (s!"'{name}' already defined", gctx)
       else
         pure (gctx.define name kind h)
     | none => pure gctx
   | _ => pure gctx
 
 private def addBinding (dialects : DialectMap) (dialectName : DialectName) (preRegistered : Bool)
-                       (acc : Except String GlobalContext) (l : SourceRange) {argDecls} (b : BindingSpec argDecls)
-                       (args : Vector Arg argDecls.size) : Except String GlobalContext := do
+                       (acc : Except (String × GlobalContext) GlobalContext) (l : SourceRange)
+                       {argDecls} (b : BindingSpec argDecls) (args : Vector Arg argDecls.size) :
+                       Except (String × GlobalContext) GlobalContext := do
   let gctx ← acc
   match b with
   | .datatype datatypeSpec =>
@@ -2254,17 +2281,22 @@ private def addBinding (dialects : DialectMap) (dialectName : DialectName) (preR
           | .ident _ e => e
           | a => panic! s!"Expected ident at {b.nameIndex.toLevel} {repr a}"
     match resolveBindingIndices dialects l b args with
-    | some kind => gctx.defineChecked name kind preRegistered
+    | some kind => gctx.defineCheckedKeep name kind preRegistered
     | none => pure gctx
 
-def addCommand (dialects : DialectMap) (gctx : GlobalContext) (op : Operation) : Except String GlobalContext := do
+/--
+Like `addCommand`, but on error also returns the context as updated by the
+bindings processed before the failure.
+-/
+private def addCommandKeep (dialects : DialectMap) (gctx : GlobalContext) (op : Operation) :
+    Except (String × GlobalContext) GlobalContext := do
     let dialectName := op.name.dialect
     -- Pre-register types if op has @[preRegisterTypes] metadata
     let .op decl := dialects.decl! op.name
-      | .error "Expected operator declaration"
+      | .error ("Expected operator declaration", gctx)
     let .isTrue h := decideProp (op.args.size = decl.argDecls.size)
-      | .error "Expected arguments to match"
-    let x ← decl.metadata.preRegisterTypesLevel decl.argDecls.size
+      | .error ("Expected arguments to match", gctx)
+    let x ← (decl.metadata.preRegisterTypesLevel decl.argDecls.size).mapError (·, gctx)
     let (gctx, preRegistered) ←
       match x with
       | some lvl =>
@@ -2273,6 +2305,34 @@ def addCommand (dialects : DialectMap) (gctx : GlobalContext) (op : Operation) :
       | none => .ok (gctx, false)
     -- Normal fold
     op.foldBindingSpecs dialects (addBinding dialects dialectName preRegistered) (.ok gctx)
+
+def addCommand (dialects : DialectMap) (gctx : GlobalContext) (op : Operation) : Except String GlobalContext :=
+  (addCommandKeep dialects gctx op).mapError (·.1)
+
+/--
+Calls `k` with the number of variables in `ctx` and `ctx` itself. Passing the
+size as an argument makes the compiler compute it before `k` runs, so `k` gets
+the only reference to `ctx`. Not inlined or specialized, so that the size
+computation stays here and is not moved into `k`.
+-/
+@[noinline, nospecialize] private def withSize {α} (ctx : GlobalContext)
+    (k : Nat → GlobalContext → α) : α :=
+  k ctx.vars.size ctx
+
+/--
+Adds `op` to `gctx`. On error, returns the error together with `gctx` as it was
+before the call.
+
+Unlike `match gctx.addCommand dialects op with | .error e => (gctx, some e) | …`,
+this never keeps a second reference to `gctx`, so the update happens in place
+instead of copying the context.
+-/
+def addCommandOrRollback (dialects : DialectMap) (gctx : GlobalContext) (op : Operation) :
+    GlobalContext × Option String :=
+  withSize gctx fun size gctx =>
+    match addCommandKeep dialects gctx op with
+    | .ok gctx => (gctx, none)
+    | .error (e, gctx) => (gctx.truncate size, some e)
 
 end GlobalContext
 

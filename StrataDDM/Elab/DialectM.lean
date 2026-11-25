@@ -651,17 +651,19 @@ instance :  MonadState DialectState DialectM := inferInstanceAs (MonadState Dial
 
 instance : MonadLift DeclM DialectM where
   monadLift act := fun c => do
-    let s ← get
+    let missingImport := (← get).missingImport
     let loaded ← c.loadedRef.get
     let ctx : DeclContext := {
         inputContext := c.inputContext,
         stopPos := c.stopPos,
         loader := loaded
-        missingImport := s.missingImport
+        missingImport
     }
-    let (r, ds) := act ctx s.declState
-    set ({ declState := ds, dialect := s.dialect, missingImport := s.missingImport } : DialectState)
-    pure  r
+    -- `modifyGet` takes the state out of the ref, so `act` can update the
+    -- `DeclState` in place instead of copying it.
+    modifyGet fun { declState, dialect, missingImport } =>
+      let (r, declState) := act ctx declState
+      (r, { declState, dialect, missingImport })
 
 def getDeclState : DialectM DeclState := fun _ => DialectState.declState <$> get
 
@@ -678,7 +680,11 @@ instance : ElabClass DialectM where
   getDialects := return (← getLoadedDialects).dialects
   getOpenDialects := return (← get).declState.openDialectSet
   getGlobalContext := return (←get).declState.globalContext
-  getErrorCount := return (←get).declState.errors.size
+  -- Take the state out of the ref and count with the non-inlined `errorCount`,
+  -- so `errors` is not shared while a following action logs to it.
+  getErrorCount := modifyGet fun s =>
+    let (count, declState) := s.declState.errorCount
+    (count, { s with declState })
   logErrorMessage msg :=
     modifyDeclState fun s => { s with errors := s.errors.push msg }
 

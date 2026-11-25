@@ -131,6 +131,15 @@ partial def elabHeader
   else
     (default, s.errors, 0)
 
+/--
+Returns the operation and location of an elaborated command. Not inlined, so
+`tree` (whose typing context references the global context) is released before
+the caller updates the global context.
+-/
+@[noinline] private def opAndLoc (tree : Tree) : Operation × SourceRange :=
+  let info := tree.info.asOp!
+  (info.op, info.loc)
+
 private partial def runCommand (leanEnv : Lean.Environment) (commands : Array Operation) (stopPos : String.Pos.Raw) : DeclM (Array Operation) := do
   let iniPos := (←get).pos
   if iniPos >= stopPos then
@@ -142,16 +151,17 @@ private partial def runCommand (leanEnv : Lean.Environment) (commands : Array Op
   if newPos <= iniPos then
     logError { start := iniPos, stop := iniPos } "Syntax error: unrecognized syntax or unexpected token"
     return commands
-  let opInfo := tree.info.asOp!
-  let cmd := opInfo.op
+  let (cmd, loc) := opAndLoc tree
   let dialects := (← read).loader.dialects
-  let s ← get
-  match s.globalContext.addCommand dialects cmd with
-  | .ok newGctx =>
-    modify fun s => { s with globalContext := newGctx }
+  -- Take the context out of the state so it is updated in place, not copied.
+  let gctx ← modifyGet fun s => (s.globalContext, { s with globalContext := {} })
+  let (gctx, error?) := gctx.addCommandOrRollback dialects cmd
+  modify fun s => { s with globalContext := gctx }
+  match error? with
+  | none =>
     runCommand leanEnv (commands.push cmd) stopPos
-  | .error e =>
-    logError opInfo.loc e
+  | some e =>
+    logError loc e
     runCommand leanEnv commands stopPos
 
 def elabProgramRest

@@ -440,7 +440,9 @@ def WorkSet.pop {α} [BEq α] [Hashable α] (s : WorkSet α)
     : Option (WorkSet α × α) :=
   let { set, pending } := s
   if p : pending.size > 0 then
-    some ({ set, pending := pending.pop }, pending[pending.size -1])
+    -- Read the last element before `pop`, so `pending` is unshared when popped.
+    let last := pending[pending.size - 1]
+    some ({ set, pending := pending.pop }, last)
   else
     none
 

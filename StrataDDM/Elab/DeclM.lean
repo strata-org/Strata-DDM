@@ -290,6 +290,15 @@ def ofDialects (ds : LoadedDialects) : DeclState :=
 
 end DeclState
 
+/--
+Returns the number of errors together with the state. Not inlined, so the count
+is computed before a following action consumes the state. Otherwise the
+compiler may move the `size` after the action, keeping `errors` shared while the
+action logs to it, so each logged error copies the array.
+-/
+@[noinline] def DeclState.errorCount (s : DeclState) : Nat × DeclState :=
+  (s.errors.size, s)
+
 @[reducible, expose]
 def DeclM := ReaderT DeclContext (StateM DeclState)
 
@@ -300,7 +309,7 @@ instance : ElabClass DeclM where
   getDialects := return (←read).loader.dialects
   getOpenDialects := return (←get).openDialectSet
   getGlobalContext := return (←get).globalContext
-  getErrorCount := return (←get).errors.size
+  getErrorCount := fun _ s => s.errorCount
   logErrorMessage msg :=
     modify fun s => { s with errors := s.errors.push msg }
 

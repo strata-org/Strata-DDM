@@ -157,6 +157,14 @@ structure ElabState where
   -- Errors found in elaboration.
   errors : Array Message := #[]
 
+/--
+Returns the number of errors together with the state. Not inlined, so the count
+is computed before a following action consumes the state and `errors` is not
+shared while the action logs to it.
+-/
+@[noinline] def ElabState.errorCount (s : ElabState) : Nat × ElabState :=
+  (s.errors.size, s)
+
 @[reducible, expose]
 def ElabM α := ReaderT ElabContext (StateM ElabState) α
 
@@ -165,7 +173,7 @@ instance : ElabClass ElabM where
   getDialects := return (←read).dialects
   getOpenDialects := return (←read).openDialectSet
   getGlobalContext := return (←read).globalContext
-  getErrorCount := return (←get).errors.size
+  getErrorCount := fun _ s => s.errorCount
   logErrorMessage msg :=
     modify fun s => { s with errors := s.errors.push msg }
 
